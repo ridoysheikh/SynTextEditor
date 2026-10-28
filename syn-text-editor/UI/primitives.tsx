@@ -288,7 +288,7 @@ function ModalBase({ title, onClose, children, footer, width = 520, label, headE
   return (
     <Layer>
       <div className="se-backdrop" data-variant={variant} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-        <div ref={box} role="dialog" aria-modal="true" aria-label={label ?? (typeof title === "string" ? title : undefined)} className="se-modal" data-variant={variant} data-kind={kind} style={{ maxWidth: width }}>
+        <div ref={box} role="dialog" aria-modal="true" aria-label={label ?? (typeof title === "string" ? title : undefined)} className="se-modal" data-variant={variant} data-kind={kind} style={variant === "sheet" ? undefined : { maxWidth: width }}>
           <div className="se-modal-head">
             <h2 className="se-modal-title">{title}</h2>
             {headExtra}

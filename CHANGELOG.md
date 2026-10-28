@@ -8,6 +8,15 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+### Added
+
+- Dialog title tracking and line height, blur behind the header and footer, and the footer button gap are variables
+  (`--se-modal-title-tracking`, `--se-modal-title-leading`, `--se-modal-bar-blur`, `--se-modal-foot-gap`).
+
+### Fixed
+
+- A dialog shown as a sheet ignored `--se-sheet-width` (the dialog's own max width was applied inline).
+
 ## [0.4.1] - 2026-10-29
 
 ### Fixed

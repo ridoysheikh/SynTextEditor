@@ -312,7 +312,8 @@ Every corner and the dialog's frame has its own variable, each falling back to `
 | `--se-modal-head-bg` · `--se-modal-foot-bg` | dialog header / footer background | transparent |
 | `--se-modal-border` | the lines under the header and over the footer | `--se-border` |
 | `--se-modal-head-pad` · `--se-modal-body-pad` · `--se-modal-foot-pad` | dialog paddings (full `padding` values) | from `--se-modal-pad` |
-| `--se-modal-title-size` · `--se-modal-title-weight` | dialog title | `14px` · `600` |
+| `--se-modal-title-size` · `--se-modal-title-weight` · `--se-modal-title-tracking` · `--se-modal-title-leading` | dialog title | `14px` · `600` · normal · inherit |
+| `--se-modal-bar-blur` · `--se-modal-foot-gap` | blur behind the header and footer; space between footer buttons | `0px` · `6px` |
 | `--se-sheet-top` · `--se-sheet-width` | where a sheet starts (below an app header) and how wide it is | `0px` · fills up to the dialog's own max width |
 
 ### Overflow
