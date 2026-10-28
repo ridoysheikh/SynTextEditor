@@ -5,3 +5,12 @@
 # Build outputs
 dist
 dist-lib
+release
+*.tgz
+
+# Private: local tooling and working notes (never published)
+scripts/
+legacy/
+.claude/
+CLAUDE.md
+*.local.*

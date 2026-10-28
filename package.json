@@ -2,9 +2,26 @@
   "name": "@syntext/react",
   "version": "0.1.0",
   "description": "Lightweight rich text editor for React and Next.js — model-first engine, themeable UI, media gallery over your own storage",
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "author": "ridoysheikh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ridoysheikh/SynTextEditor.git"
+  },
+  "homepage": "https://github.com/ridoysheikh/SynTextEditor#readme",
+  "bugs": {
+    "url": "https://github.com/ridoysheikh/SynTextEditor/issues"
+  },
   "type": "module",
-  "keywords": ["react", "nextjs", "rich-text", "editor", "wysiwyg", "contenteditable", "tailwindcss"],
+  "keywords": [
+    "react",
+    "nextjs",
+    "rich-text",
+    "editor",
+    "wysiwyg",
+    "contenteditable",
+    "tailwindcss"
+  ],
   "exports": {
     ".": {
       "types": "./dist-lib/library-entry.d.ts",
@@ -20,8 +37,14 @@
     "./theme": "./dist-lib/theme.css",
     "./tailwind": "./dist-lib/tailwind.css"
   },
-  "sideEffects": ["*.css"],
-  "files": ["dist-lib"],
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "dist-lib",
+    "LICENSE",
+    "README.md"
+  ],
   "main": "./dist-lib/index.cjs",
   "module": "./dist-lib/index.mjs",
   "types": "./dist-lib/library-entry.d.ts",
@@ -31,7 +54,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build:app": "vite build",
-    "build:lib": "vite build --config vite.lib.config.ts && node scripts/verify-bundle.mjs",
+    "build:lib": "vite build --config vite.lib.config.ts",
     "build": "pnpm typecheck && pnpm build:lib",
     "preview": "vite preview"
   },

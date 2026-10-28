@@ -26,11 +26,28 @@ the viewer draws it as React elements, and `toHTML` writes it out when you need 
 - **Lightweight** — ~40 KB gzipped for the full editor UI, ~9 KB for the viewer, ~6 KB CSS. Peer deps: React 18+.
   One dependency: `lucide-react` (icons, tree-shaken).
 
-## Install and set up (Next.js App Router)
+## Install
+
+Releases are published on GitHub ([all releases](https://github.com/ridoysheikh/SynTextEditor/releases)), each
+with a ready-built package. Install one by its URL:
 
 ```bash
-pnpm add @syntext/react
+npm install https://github.com/ridoysheikh/SynTextEditor/releases/download/v0.1.0/syntext-react-0.1.0.tgz
+# pnpm add …   ·   yarn add …   ·   bun add …   (same URL)
 ```
+
+Your `package.json` then has `"@syntext/react": "https://github.com/…/syntext-react-0.1.0.tgz"`, and you import
+`@syntext/react` as usual. Peer dependencies: `react` and `react-dom` 18 or newer.
+
+- **Upgrading:** install the URL of a newer release (the version is in both the tag and the file name).
+- **Always the newest:** `https://github.com/ridoysheikh/SynTextEditor/releases/latest/download/syntext-react.tgz`
+  — handy for trying it out, but pin a version in real projects: lockfiles record the file's checksum, and "latest"
+  changes underneath it.
+- **Checking the download:** each release carries `SHA256SUMS`.
+- **Private CI or offline:** download the `.tgz` into your repo (e.g. `vendor/`) and install it by path:
+  `npm install ./vendor/syntext-react-0.1.0.tgz`.
+
+## Set up (Next.js App Router)
 
 ```tsx
 // app/layout.tsx — once
@@ -198,10 +215,16 @@ and the schema (unsafe links and sources included) — it runs in Node.
 ## Develop
 
 ```bash
+pnpm install
 pnpm dev          # the demo app (test-preview/) at localhost:5173
 pnpm test         # unit tests (core model, ops, tables, HTML, storage)
-pnpm build:lib    # dist-lib/ + a post-build check of the published entries
+pnpm build:lib    # the package, into dist-lib/
+npm pack          # dist-lib/ as an installable .tgz — test it in another app with `npm install ../path/to.tgz`
 ```
 
 `syn-text-editor/` is the library: `core/` (model, ops, tables, HTML, storage — no DOM, no React), `editor/` (the
 contentEditable engine), `UI/` (toolbar, dialogs, gallery), `view/` (the viewer), `styles/`.
+
+## License
+
+[MIT](LICENSE)

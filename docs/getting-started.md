@@ -2,9 +2,16 @@
 
 ## Install
 
+From a [GitHub release](https://github.com/ridoysheikh/SynTextEditor/releases) — pick a version, install its
+package by URL:
+
 ```bash
-pnpm add @syntext/react      # peer dependencies: react >= 18, react-dom >= 18
+npm install https://github.com/ridoysheikh/SynTextEditor/releases/download/v0.1.0/syntext-react-0.1.0.tgz
+# pnpm add / yarn add / bun add take the same URL. Peer dependencies: react >= 18, react-dom >= 18
 ```
+
+It installs as `@syntext/react`; every import below uses that name. See the
+[README](../README.md#install) for upgrading, the always-newest link and offline installs.
 
 ## The stylesheets
 
