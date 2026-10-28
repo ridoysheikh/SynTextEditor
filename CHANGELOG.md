@@ -8,6 +8,17 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+### Fixed
+
+- **HTML round trip** — what `toHTML` writes now reads back to the same document through `parseHtml`, `insertHTML`
+  and paste, so a body can be stored as HTML and opened again. Class-mode HTML used to lose bold, italic,
+  underline, strikethrough, inline code, palette colours and highlights, list nesting, image / video alignment,
+  table cell alignment and file blocks. Inline-mode HTML used to gain a grey colour on quotes, a highlight on code
+  blocks, a literal `☐` / `☑` in checklist items, strikethrough on ticked items, an underline on links, a size on
+  inline code, a `📎` in file names, and lost video widths. The one remaining difference is by design: inline mode
+  has no CSS variables, so a palette colour comes back as its hex value.
+- An image, video, table or rule inside a pasted `<p>` or `<figure>` no longer leaves an empty paragraph before it.
+
 ## [0.3.0] - 2026-10-29
 
 ### Added

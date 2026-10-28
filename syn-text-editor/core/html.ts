@@ -7,7 +7,8 @@
  * In (`parseHtml`, browser only — DOMParser): pasted HTML from Word, Google Docs, web pages or another editor is
  * read into the model — bold, italic, underline, strike, sizes (px / pt / em / %), exact colours, fonts, alignment,
  * headings, lists, checklists, links, tables, images and video; everything else is dropped. HTML this editor wrote
- * carries the exact blocks in `data-syn`, so pasting between editors loses nothing.
+ * (either mode) reads back to the same document — its classes, palette variables and data attributes are understood
+ * — so a body can be stored as HTML and opened again. Clipboard HTML also carries the exact blocks in `data-syn`.
  */
 import {
   BLOCK_SIZE, cleanBlock, clampSize, FULL_SCHEMA, isAtom, normaliseSpans, safeFont, safeLink, safePoster, safeSrc,
@@ -221,6 +222,13 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
     out.push(cur);
   };
   const end = () => { cur = null; };
+  /** Add an image, rule, table… — and drop the empty line its container (`<p>`, `<figure>`) opened just before it. */
+  const atom = (b: Block) => {
+    const open = cur as Block | null;
+    if (open && !open.spans.length && !open.list && out[out.length - 1] === open) out.pop();
+    end();
+    out.push(b);
+  };
 
   /** A cell's inline content as spans (nested blocks become line breaks). */
   const cellSpans = (el: HTMLElement, ctx: Ctx): Span[] => {
@@ -241,6 +249,10 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
       }
       const blk = cur as unknown as Block;
       if (!blk.spans.length && !ctx.pre) text = text.replace(/^ +/, "");
+      if (blk.list === "check" && !blk.spans.length) {                          // inline mode writes "☐ " / "☑ " before the text
+        const m = /^([☐☑]) ?/.exec(text);
+        if (m) { text = text.slice(m[0].length); if (m[1] === "☑") blk.checked = true; }
+      }
       if (text) blk.spans.push({ ...ctx.marks, ...(ctx.size !== BLOCK_SIZE[blk.type] ? { size: ctx.size } : {}), text });
       return;
     }
@@ -253,7 +265,17 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
       (cur as unknown as Block).spans.push({ ...ctx.marks, text: "\n" });
       return;
     }
-    if (tag === "HR") { end(); out.push({ type: "hr", spans: [] }); return; }
+    if (tag === "HR") { atom({ type: "hr", spans: [] }); return; }
+    // A file this editor wrote: a block with a download link (class mode: `.se-file`; inline mode: `📎 name`).
+    const fileLink = tag === "DIV" && el.classList.contains("se-file") ? el.querySelector("a")
+      : tag === "P" && el.firstElementChild?.tagName === "A" && el.firstElementChild.hasAttribute("download") && (el.textContent ?? "").startsWith("📎")
+        ? el.firstElementChild : null;
+    const fileSrc = fileLink ? safeSrc(fileLink.getAttribute("href")) : undefined;
+    if (fileLink && fileSrc) {
+      const name = (fileLink.querySelector(".se-file-name")?.textContent ?? fileLink.textContent ?? "").replace(/^📎\s*/, "").trim();
+      atom({ type: "file", src: fileSrc, spans: [], ...(name ? { name } : {}) });
+      return;
+    }
     if (tag === "IMG" || tag === "VIDEO") {
       const src = safeSrc(el.getAttribute("src") ?? el.querySelector("source")?.getAttribute("src"));
       if (!src) {
@@ -261,20 +283,21 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
         if (alt) walk(document.createTextNode(alt), ctx);
         return;
       }
-      end();
-      const caption = el.closest("figure")?.querySelector("figcaption")?.textContent?.trim();
-      const w = parseFloat(el.style?.width || el.style?.maxWidth || "");
-      out.push({
+      const fig = el.closest("figure");
+      const caption = fig?.querySelector("figcaption")?.textContent?.trim();
+      const pct = [el.style?.maxWidth, el.style?.width, el.parentElement?.style?.width].find((v) => v?.endsWith("%") && parseFloat(v) > 0 && parseFloat(v) < 100);
+      const figAlign = (fig?.getAttribute("data-align") || fig?.style?.textAlign || "").toLowerCase();
+      atom({
         type: tag === "IMG" ? "image" : "video", src, spans: [],
+        ...(figAlign === "left" || figAlign === "right" ? { align: figAlign } : {}),
         ...(el.getAttribute("alt") ? { alt: el.getAttribute("alt")! } : {}), ...(caption ? { caption } : {}),
         ...(tag === "VIDEO" && safePoster(el.getAttribute("poster")) ? { poster: safePoster(el.getAttribute("poster"))! } : {}),
-        ...(el.style?.width?.endsWith("%") && w > 0 && w < 100 ? { width: w } : {}),
+        ...(pct ? { width: parseFloat(pct) } : {}),
       });
       return;
     }
     if (tag === "FIGCAPTION" && el.parentElement?.querySelector("img,video")) return;     // taken with its image
     if (tag === "TABLE") {
-      end();
       const rows: Cell[][] = [];
       let head = false;
       el.querySelectorAll("tr").forEach((tr, i) => {
@@ -282,11 +305,12 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
         const cells = Array.from(tr.children).filter((c) => c.tagName === "TD" || c.tagName === "TH") as HTMLElement[];
         if (i === 0 && cells.length && cells.every((c) => c.tagName === "TH")) head = true;
         rows.push(cells.map((c) => {
-          const a = (c.style?.textAlign || c.getAttribute("align") || "").toLowerCase();
+          const a = (c.style?.textAlign || c.getAttribute("align") || c.getAttribute("data-align") || "").toLowerCase();
           return { spans: cellSpans(c, ctx), ...(a === "center" || a === "right" || a === "justify" ? { align: a } : {}) };
         }));
       });
-      if (rows.length) out.push({ type: "table", spans: [], rows, ...(head ? { head: true as const } : {}) });
+      if (rows.length) atom({ type: "table", spans: [], rows, ...(head ? { head: true as const } : {}) });
+      else end();
       return;
     }
 
@@ -296,6 +320,12 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
     if (tag === "U" || tag === "INS") next.marks.underline = true;
     if (tag === "S" || tag === "STRIKE" || tag === "DEL") next.marks.strike = true;
     if ((tag === "CODE" || tag === "KBD" || tag === "SAMP" || tag === "TT") && !ctx.pre) next.marks.code = true;
+    const cl = el.classList;                                                   // this editor's own classes
+    if (cl.contains("se-b")) next.marks.bold = true;
+    if (cl.contains("se-i")) next.marks.italic = true;
+    if (cl.contains("se-u")) next.marks.underline = true;
+    if (cl.contains("se-s")) next.marks.strike = true;
+    if (cl.contains("se-icode") && !ctx.pre) next.marks.code = true;
     if (tag === "SUB") next.marks.script = "sub";
     if (tag === "SUP") next.marks.script = "sup";
     if (tag === "MARK") next.marks.highlight = "yellow";
@@ -316,18 +346,25 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
       if (st.fontStyle === "italic" || st.fontStyle === "oblique") next.marks.italic = true;
       else if (st.fontStyle === "normal") delete next.marks.italic;
       const deco = `${st.textDecorationLine || ""} ${st.textDecoration || ""}`;
-      if (deco.includes("underline")) next.marks.underline = true;
-      if (deco.includes("line-through")) next.marks.strike = true;
+      if (deco.includes("underline") && tag !== "A") next.marks.underline = true;           // a link is underlined by being a link
+      if (deco.includes("line-through") && !(tag === "LI" && ctx.list === "check")) next.marks.strike = true;   // a ticked item is struck through by its style, not by the user
       if (st.verticalAlign === "sub") next.marks.script = "sub";
       if (st.verticalAlign === "super") next.marks.script = "sup";
       if (st.fontFamily) {
         if (/mono|courier|consolas/i.test(st.fontFamily) && !ctx.pre) next.marks.code = true;
         else { const f = safeFont(st.fontFamily); if (f && !/^(inherit|initial|-apple-system|system-ui)$/i.test(f)) next.marks.font = f; }
       }
-      if (st.fontSize) { const px = pxOf(st.fontSize, ctx.size); if (px) next.size = px; }
-      if (st.color) { const c = colorOf(st.color); if (c) next.marks.color = c; else delete next.marks.color; }
+      if (st.fontSize && !(next.marks.code && st.fontSize === "0.9em")) { const px = pxOf(st.fontSize, ctx.size); if (px) next.size = px; }   // 0.9em is inline code's own
+      const ownLook = tag === "BLOCKQUOTE" || tag === "PRE";                   // their colours are the block's style, not the text's
+      if (st.color && !ownLook) { const c = colorOf(st.color); if (c) next.marks.color = c; else delete next.marks.color; }
       const bg = st.backgroundColor || (st.background && rgb(st.background) ? st.background : "");
-      if (bg) { const h = highlightOf(bg); if (h) next.marks.highlight = h; }
+      if (bg && !ownLook) { const h = highlightOf(bg); if (h) next.marks.highlight = h; }
+      // Palette colours are written as variables (`var(--se-c-red, #e03131)`): read the name back, not the fallback.
+      const css = el.getAttribute("style") ?? "";
+      const pc = /(?:^|;)\s*color\s*:\s*var\(\s*--se-c-([a-z0-9-]+)/i.exec(css);
+      if (pc) next.marks.color = pc[1].toLowerCase();
+      const ph = /(?:^|;)\s*background(?:-color)?\s*:\s*var\(\s*--se-hl-([a-z0-9-]+)/i.exec(css);
+      if (ph) next.marks.highlight = ph[1].toLowerCase();
     }
 
     const isBlock = BLOCKS.has(tag) || tag === "UL" || tag === "OL" || st?.display === "block";
@@ -344,6 +381,12 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
         const box = el.querySelector(":scope > input[type=checkbox]") as HTMLInputElement | null;
         if (box) next.list = "check";
         next.checked = box ? box.checked || box.hasAttribute("checked") : el.getAttribute("data-checked") !== null;
+        const di = el.getAttribute("data-indent");                              // class mode writes a flat list with the depth here
+        if (di !== null && /^\d+$/.test(di)) next.depth = Math.min(Number(di), 6);
+        else {                                                                   // inline mode writes it as a left margin
+          const ml = /^([\d.]+)em$/.exec(st?.marginLeft ?? "");
+          if (ml && ctx.list) next.depth = Math.min(Math.round(Number(ml[1]) / 1.5), 6);
+        }
       }
       const align = (st?.textAlign || el.getAttribute("align") || el.getAttribute("data-align") || "").toLowerCase();
       if (align === "center" || align === "right" || align === "justify") next.align = align;

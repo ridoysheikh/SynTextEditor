@@ -108,3 +108,15 @@ formats apply. Copying from one SynTextEditor to another keeps the exact blocks.
 
 `editor.insertHTML(html)` and `parseHtml(html, schema)` (browser only) use the same reader — handy for importing
 existing HTML content into documents.
+
+The reader also understands what `toHTML` writes, in both modes — `se-*` classes, palette variables, `data-indent` /
+`data-align`, inline-mode checklists — so a body can be **stored as HTML** and loaded again:
+
+```ts
+const html = editor.getHTML();                                   // save this
+const blocks = parseHtml(html, editor.schema);                   // later: open it again
+editor.setValue(toDoc({ version: 1, blocks }, editor.schema));
+```
+
+It is lossless for class mode. Inline mode (email) has no CSS variables, so a palette colour comes back as its hex
+value; everything else is kept. Empty paragraphs at the very start or end, and runs of more than one, are dropped.
