@@ -8,6 +8,8 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-29
+
 ### Added
 
 - **Type scale variables** — the chrome's font sizes (`--se-fs-2xs` … `--se-fs-lg`) and weights (`--se-fw-medium`,
@@ -133,7 +135,8 @@ The first release.
 - **Docs** — getting started, configuration, theming, customization, components, right-click menu, storage, API
   reference and the document model, in `docs/`.
 
-[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.3.1...v0.4.0
