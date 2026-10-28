@@ -226,3 +226,17 @@ describe("fonts", () => {
     expect(usedFonts([brand, gf, FONTS[0]], doc.blocks).map((f) => f.label)).toEqual(["Brand", "Lora"]);
   });
 });
+
+describe("colour picker maths", async () => {
+  const { hexToHsv, hsvToHex, normalizeHex } = await import("../UI/ColorPicker");
+  it("round-trips hex through HSV", () => {
+    for (const h of ["#000000", "#ffffff", "#e11d48", "#2f6bff", "#0c8599", "#808080"]) expect(hsvToHex(hexToHsv(h))).toBe(h);
+    expect(hexToHsv("#ff0000")).toEqual({ h: 0, s: 100, v: 100 });
+  });
+  it("normalises typed hex", () => {
+    expect(normalizeHex("ABC")).toBe("#aabbcc");
+    expect(normalizeHex(" #1a2B3c ")).toBe("#1a2b3c");
+    expect(normalizeHex("#12345")).toBeNull();
+    expect(normalizeHex("red")).toBeNull();
+  });
+});

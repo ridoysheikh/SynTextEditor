@@ -164,12 +164,12 @@ export function MediaGallery({ editor, filter, replace, onClose }: {
                 </div>
                 <div className="se-stack" style={{ gap: 8, minWidth: 0 }}>
                   <dl>
-                    <dt>Name</dt><dd title={detail.name}>{detail.name}</dd>
+                    <dt>Name</dt><dd>{detail.name}</dd>
                     <dt>Type</dt><dd>{detail.type}</dd>
                     {detail.size !== undefined && <><dt>Size</dt><dd>{formatBytes(detail.size)}</dd></>}
                     {detail.width && detail.height && <><dt>Dimensions</dt><dd>{detail.width} × {detail.height}</dd></>}
                     {detail.createdAt && <><dt>Added</dt><dd>{new Date(detail.createdAt).toLocaleString()}</dd></>}
-                    <dt>URL</dt><dd title={detail.url}><a href={detail.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--se-link)" }}>{detail.url}</a></dd>
+                    <dt>URL</dt><dd data-long><a href={detail.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--se-link)" }}>{detail.url}</a></dd>
                   </dl>
                   {storage.remove && (
                     <div className="se-row">
@@ -197,7 +197,7 @@ function Tile({ asset: a, picked, onPick, onOpen }: { asset: Asset; picked: bool
   const k = kindOf(a.type);
   const Icon = KIND_ICON[k];
   return (
-    <button type="button" role="option" className="se-tile" aria-pressed={picked} aria-selected={picked} title={a.name}
+    <button type="button" role="option" className="se-tile" aria-pressed={picked} aria-selected={picked}
       onClick={(e) => onPick(e.ctrlKey || e.metaKey || e.shiftKey)} onDoubleClick={onOpen}>
       <span className="se-tile-thumb">
         {k === "image" ? <img src={a.thumbnail ?? a.url} alt="" loading="lazy" draggable={false} />

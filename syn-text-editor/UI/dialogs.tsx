@@ -10,7 +10,7 @@ import { isCollapsed } from "../core/ops";
 import { useEditorValue } from "../hooks";
 import type { SynTextEditor } from "../SynTextEditor";
 import { SynTextView } from "../view/SynTextView";
-import { Button, Field, Modal, ToolButton, cx } from "./primitives";
+import { Button, Field, Modal, Slider, ToolButton, cx } from "./primitives";
 import { keys, useToolState, useUI } from "./toolbar/tools";
 
 export function LinkDialog({ editor, onClose }: { editor: SynTextEditor; onClose: () => void }) {
@@ -82,7 +82,7 @@ export function MediaDetailsDialog({ editor, index, onClose }: { editor: SynText
           <>
             <Field label="Caption"><input className="se-input" value={caption} onChange={(e) => setCaption(e.target.value)} /></Field>
             <Field label={`Width — ${width}%`}>
-              <input type="range" min={10} max={100} step={5} value={width} onChange={(e) => setWidth(Number(e.target.value))} style={{ accentColor: "var(--se-accent)" }} />
+              <Slider label="Width" min={10} max={100} step={5} value={width} valueText={`${width}%`} onChange={setWidth} />
             </Field>
           </>
         )}

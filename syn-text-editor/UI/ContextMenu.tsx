@@ -6,7 +6,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronRight } from "lucide-react";
 import type { ContextMenuContext, ContextMenuItem, SynTextEditor } from "../SynTextEditor";
-import { Layer, cx, keep } from "./primitives";
+import { Layer, cx, fitAxis, keep, revealRow } from "./primitives";
 import { useUI } from "./toolbar/tools";
 
 type Row = Exclude<ContextMenuItem, "separator">;
@@ -67,7 +67,10 @@ function Menu({ editor, ctx, items }: { editor: SynTextEditor; ctx: ContextMenuC
       close();                       // anything else (a shortcut, typing) closes the menu and goes through
     };
     const down = (e: MouseEvent) => { if (!(e.target as Element).closest?.(".se-ctx")) close(); };
-    const away = () => close();
+    const away = (e: Event) => {
+      if (e.type === "scroll" && e.target instanceof Element && e.target.closest(".se-ctx")) return;   // the menu's own scroll
+      close();
+    };
     document.addEventListener("keydown", key, true);
     document.addEventListener("mousedown", down, true);
     window.addEventListener("resize", away);
@@ -82,8 +85,14 @@ function Menu({ editor, ctx, items }: { editor: SynTextEditor; ctx: ContextMenuC
     };
   });
 
+  const layer = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    for (const panel of Array.from(layer.current?.querySelectorAll<HTMLElement>(".se-ctx") ?? [])) revealRow(panel, "[data-focus]");
+  }, [path]);
+
   return (
     <Layer>
+      <div ref={layer} style={{ display: "contents" }}>
       {levels.map((list, level) => {
         const anchor = level === 0 ? null : rows.current.get(`${level - 1}:${path[level - 1]}`) ?? null;
         return (
@@ -120,36 +129,37 @@ function Menu({ editor, ctx, items }: { editor: SynTextEditor; ctx: ContextMenuC
           </Panel>
         );
       })}
+      </div>
     </Layer>
   );
 }
 
-/** One level of the menu: at the pointer, or beside its parent row — flipped to stay on screen. */
+/** One level of the menu: at the pointer, or beside its parent row — flipped to stay on screen, scrolling when taller. */
 function Panel({ level, x, y, anchor, children }: { level: number; x: number; y: number; anchor: HTMLElement | null; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; room: number } | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     const w = el.offsetWidth;
-    const h = el.offsetHeight;
+    const h = el.scrollHeight;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    let left: number;
-    let top: number;
     if (!anchor) {
-      left = x + w > vw - 4 ? Math.max(4, x - w) : x;
-      top = y + h > vh - 4 ? Math.max(4, y - h) : y;
+      const left = x + w > vw - 4 ? Math.max(4, x - w) : x;
+      const v = fitAxis(y, y, h, vh, 0, 4);
+      setPos({ left, top: v.at, room: v.max });
     } else {
       const r = anchor.getBoundingClientRect();
-      left = r.right + w - 2 > vw - 4 ? Math.max(4, r.left - w + 2) : r.right - 2;
-      top = Math.max(4, Math.min(r.top - 4, vh - h - 4));
+      const left = r.right + w - 2 > vw - 4 ? Math.max(4, r.left - w + 2) : r.right - 2;
+      const room = vh - 8;
+      setPos({ left, top: Math.max(4, Math.min(r.top - 4, vh - Math.min(h, room) - 4)), room });
     }
-    setPos({ left, top });
   }, [x, y, anchor]);
   return (
     <div ref={ref} role="menu" className={cx("se-popover se-ctx", level > 0 && "se-ctx-sub")}
-      style={{ left: pos?.left ?? -9999, top: pos?.top ?? -9999 }} onContextMenu={(e) => e.preventDefault()}>
+      style={{ left: pos?.left ?? -9999, top: pos?.top ?? -9999, ["--se-room" as string]: pos ? `${pos.room}px` : undefined }}
+      onContextMenu={(e) => e.preventDefault()}>
       {children}
     </div>
   );

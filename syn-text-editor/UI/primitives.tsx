@@ -101,8 +101,31 @@ export const Divider = () => <span className="se-sep" aria-hidden />;
 
 // ── Popover ───────────────────────────────────────────────────────────────────
 /**
- * A floating panel under `anchor`, flipped above when there's no room, kept on screen. Closes on Escape, on a
- * click outside, and when the editor scrolls away.
+ * Where a floating panel of natural height `h` goes beside the span [start, end] on an axis of length `size`:
+ * after it if it fits, else before it if it fits, else on the roomier side — with `max`, the room it has there, so
+ * the panel scrolls instead of leaving the screen.
+ */
+export function fitAxis(start: number, end: number, h: number, size: number, gap = 4, margin = 6): { at: number; max: number } {
+  const after = size - end - gap - margin;
+  const before = start - gap - margin;
+  if (h <= after || after >= before) return { at: end + gap, max: Math.max(after, 0) };
+  return { at: Math.max(margin, start - gap - Math.min(h, before)), max: before };
+}
+
+/** Scrolls the checked or highlighted row of a scrolling panel into view, without moving anything else. */
+export function revealRow(panel: HTMLElement | null, sel = '[data-focus], [aria-checked="true"]') {
+  const row = panel?.querySelector<HTMLElement>(sel);
+  if (!panel || !row || panel.scrollHeight <= panel.clientHeight) return;
+  const top = row.offsetTop;
+  const bottom = top + row.offsetHeight;
+  if (top < panel.scrollTop) panel.scrollTop = top - 4;
+  else if (bottom > panel.scrollTop + panel.clientHeight) panel.scrollTop = bottom - panel.clientHeight + 4;
+}
+
+/**
+ * A floating panel under `anchor`, flipped above when there's no room, kept on screen — and never taller or wider
+ * than the room it has (`--se-popover-max-h` / `--se-popover-max-w` cap it; past that it scrolls). Closes on
+ * Escape, on a click outside, and when the editor scrolls away.
  */
 export function Popover({ anchor, open, onClose, children, align = "start", className, style, role = "dialog", label }: {
   anchor: HTMLElement | null;
@@ -116,26 +139,38 @@ export function Popover({ anchor, open, onClose, children, align = "start", clas
   label?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; room: number } | null>(null);
+  const first = useRef(true);
 
   useIsoLayoutEffect(() => {
-    if (!open || !anchor) { setPos(null); return; }
-    const place = () => {
-      const a = anchor.getBoundingClientRect();
+    if (!open || !anchor) { setPos(null); first.current = true; return; }
+    const place = (e?: Event) => {
       const el = ref.current;
+      if (e?.type === "scroll" && el && e.target instanceof Node && el.contains(e.target)) return;   // its own scroll
+      const a = anchor.getBoundingClientRect();
       const w = el?.offsetWidth ?? 200;
-      const h = el?.offsetHeight ?? 200;
+      const h = el?.scrollHeight ?? 200;
       let left = align === "end" ? a.right - w : align === "center" ? a.left + a.width / 2 - w / 2 : a.left;
       left = Math.max(6, Math.min(left, window.innerWidth - w - 6));
-      let top = a.bottom + 4;
-      if (top + h > window.innerHeight - 6 && a.top - h - 4 > 6) top = a.top - h - 4;
-      setPos({ left, top });
+      const y = fitAxis(a.top, a.bottom, h, window.innerHeight);
+      setPos({ left, top: y.at, room: y.max });
     };
     place();
-    const raf = requestAnimationFrame(place);
+    const raf = requestAnimationFrame(() => {
+      place();
+      if (first.current) { first.current = false; revealRow(ref.current); }
+    });
+    // Content that grows (a section opening) re-fits the panel.
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => place());
+    for (const child of Array.from(ref.current?.children ?? [])) ro?.observe(child);
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", place); window.removeEventListener("scroll", place, true); };
+    return () => {
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
   }, [open, anchor, align]);
 
   useEffect(() => {
@@ -155,7 +190,7 @@ export function Popover({ anchor, open, onClose, children, align = "start", clas
   return (
     <Layer>
       <div ref={ref} role={role} aria-label={label} className={cx("se-popover", className)}
-        style={{ ...style, left: pos?.left ?? -9999, top: pos?.top ?? -9999 }}>
+        style={{ ...style, left: pos?.left ?? -9999, top: pos?.top ?? -9999, ["--se-room" as string]: pos ? `${pos.room}px` : undefined }}>
         {children}
       </div>
     </Layer>
@@ -205,7 +240,7 @@ export function MenuItem({ children, icon, checked, danger, kbd, onSelect, disab
   return (
     <button type="button" role="menuitemradio" aria-checked={checked} data-danger={danger ? "" : undefined} disabled={disabled}
       className="se-menu-item" style={style} onMouseDown={keep} onClick={onSelect}>
-      {icon}{children}{kbd && <span className="se-menu-kbd">{kbd}</span>}
+      {icon}<span className="se-menu-text">{children}</span>{kbd && <span className="se-menu-kbd">{kbd}</span>}
     </button>
   );
 }
@@ -267,4 +302,57 @@ export function Button({ tone, size, children, className, ...rest }: React.Butto
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="se-field"><span>{label}</span>{children}</label>;
+}
+
+// ── Slider ────────────────────────────────────────────────────────────────────
+/**
+ * A range control drawn by the library (no native `<input type="range">`): drag, click the track, or use the keys —
+ * ← → ↑ ↓ step, Page Up / Down ten steps, Home / End the ends. `track` paints the track (e.g. a hue gradient).
+ */
+export function Slider({ value, min = 0, max = 100, step = 1, onChange, label, valueText, track, className, style }: {
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  onChange: (v: number) => void;
+  label: string;
+  valueText?: string;
+  track?: string;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const snap = (v: number) => Math.min(max, Math.max(min, Math.round((v - min) / step) * step + min));
+  const at = (clientX: number) => {
+    const r = ref.current!.getBoundingClientRect();
+    return snap(min + ((clientX - r.left) / Math.max(r.width, 1)) * (max - min));
+  };
+  const pct = ((value - min) / (max - min || 1)) * 100;
+  return (
+    <div ref={ref} role="slider" tabIndex={0} aria-label={label} aria-valuemin={min} aria-valuemax={max} aria-valuenow={value}
+      aria-valuetext={valueText} className={cx("se-slider", className)} data-track={track ? "" : undefined}
+      style={{ ...style, ["--se-slider-pct" as string]: `${pct}%`, ...(track ? { ["--se-slider-track" as string]: track } : {}) }}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.currentTarget.focus({ preventScroll: true });
+        e.currentTarget.setPointerCapture(e.pointerId);
+        onChange(at(e.clientX));
+      }}
+      onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) onChange(at(e.clientX)); }}
+      onKeyDown={(e) => {
+        const big = step * 10;
+        const next = e.key === "ArrowRight" || e.key === "ArrowUp" ? value + step
+          : e.key === "ArrowLeft" || e.key === "ArrowDown" ? value - step
+          : e.key === "PageUp" ? value + big : e.key === "PageDown" ? value - big
+          : e.key === "Home" ? min : e.key === "End" ? max : null;
+        if (next === null) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onChange(snap(next));
+      }}>
+      <span className="se-slider-track"><span className="se-slider-fill" /></span>
+      <span className="se-slider-thumb" />
+    </div>
+  );
 }

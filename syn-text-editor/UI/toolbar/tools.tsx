@@ -7,10 +7,11 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, Check, ChevronDown, Code, Code2, Eraser, Expand, Eye, File,
   Film, Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Italic, Link2, List, ListChecks, ListOrdered, Minus,
-  Paintbrush, Plus, Quote, Redo2, Search, Shrink, Strikethrough, Subscript, Superscript, Table, Underline, Undo2, Images,
+  Paintbrush, Pipette, Plus, Quote, Redo2, Search, Shrink, Strikethrough, Subscript, Superscript, Table, Underline, Undo2, Images,
 } from "lucide-react";
 import { BLOCK_LABEL, BLOCK_SIZE, SIZE_MAX, SIZE_MIN, type Align, type TextType, type Toggle } from "../../core/model";
-import { colorValue } from "../../core/styles";
+import { colorValue, type Swatch } from "../../core/styles";
+import { ColorPicker, recentColors, rememberColor } from "../ColorPicker";
 import type { EditorState } from "../../editor/engine";
 import { useEditorValue } from "../../hooks";
 import type { SynTextEditor, UIState } from "../../SynTextEditor";
@@ -128,17 +129,20 @@ export function SizeTool({ editor }: ToolProps) {
     <span className="se-tb-group" style={{ gap: 1 }}>
       <ToolButton label="Smaller" kbd={keys("Ctrl+Shift+,")} disabled={off} onClick={() => editor.engine?.stepSize(-1)} style={{ minWidth: 22, padding: 0 }}><Minus /></ToolButton>
       <input
-        className="se-size-input" type="number" inputMode="numeric" aria-label="Font size (px)" min={SIZE_MIN} max={SIZE_MAX} disabled={off}
+        className="se-size-input" type="text" inputMode="numeric" role="spinbutton" aria-label="Font size (px)" disabled={off}
+        aria-valuemin={SIZE_MIN} aria-valuemax={SIZE_MAX} aria-valuenow={size ?? undefined} maxLength={2} autoComplete="off" spellCheck={false}
         placeholder="—" value={draft ?? (size ? String(size) : "")}
         onChange={(e) => {
-          const v = e.target.value;
+          const v = e.target.value.replace(/\D/g, "");
           setDraft(v);
           const n = Number(v);
-          if (Number.isInteger(n) && n >= SIZE_MIN && n <= SIZE_MAX) editor.engine?.setSize(n, false);
+          if (v && n >= SIZE_MIN && n <= SIZE_MAX) editor.engine?.setSize(n, false);
         }}
         onBlur={() => setDraft(null)}
-        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); setDraft(null); editor.focus(); } }}
-        list={undefined}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); setDraft(null); editor.focus(); }
+          else if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); setDraft(null); editor.engine?.stepSize(e.key === "ArrowUp" ? 1 : -1); }
+        }}
       />
       <PopoverButton label="Sizes" icon={<ChevronDown className="se-caret" />} disabled={off} buttonClassName="se-btn-narrow" style={{ minWidth: 18, padding: 0 }}>
         {(close) => (
@@ -161,33 +165,58 @@ export function ColorTool({ editor, kind }: ToolProps & { kind: "color" | "highl
   const list = kind === "color" ? colors : highlights;
   const cur = state?.active.marks[kind];
   const set = (c: string | null) => (kind === "color" ? editor.setColor(c) : editor.setHighlight(c));
-  const [custom, setCustom] = useState("#2f6bff");
   const bar = cur ? colorValue(cur, kind) : kind === "color" ? "var(--se-text)" : "transparent";
+  const title = kind === "color" ? "Text colour" : "Highlight";
   return (
-    <PopoverButton label={kind === "color" ? "Text colour" : "Highlight"} disabled={off}
+    <PopoverButton label={title} disabled={off}
       icon={<>{kind === "color" ? <Baseline /> : <Highlighter />}<span className="se-swatch-bar" style={{ background: bar, outline: !cur && kind === "highlight" ? "1px dashed var(--se-muted)" : undefined }} /></>}>
-      {(close) => (
-        <div style={{ width: 214 }}>
-          <MenuLabel>{kind === "color" ? "Text colour" : "Highlight"}</MenuLabel>
-          <div className="se-swatches" role="group">
-            {list.map((s) => (
-              <button key={s.name} type="button" className="se-swatch" aria-label={s.label} title={s.label} aria-pressed={cur === s.name}
-                style={{ background: colorValue(s.name, kind) }} onMouseDown={keep} onClick={() => { close(); set(s.name); }}>
-                {cur === s.name && <Check size={13} color={kind === "color" ? "#fff" : "var(--se-text)"} />}
-              </button>
-            ))}
-          </div>
-          <MenuSeparator />
-          <div className="se-swatch-row">
-            <input type="color" aria-label="Custom colour" value={cur?.startsWith("#") ? cur.slice(0, 7) : custom} onChange={(e) => setCustom(e.target.value)} />
-            <button type="button" className="se-button" data-size="sm" onMouseDown={keep} onClick={() => { close(); set(custom); }}>Apply custom</button>
-            <button type="button" className="se-button" data-size="sm" data-tone="ghost" onMouseDown={keep} onClick={() => { close(); set(null); }}>
-              {kind === "color" ? "Default" : "None"}
-            </button>
-          </div>
-        </div>
-      )}
+      {(close) => <ColorPanel kind={kind} title={title} list={list} cur={cur} onPick={(c) => { close(); set(c); }} />}
     </PopoverButton>
+  );
+}
+
+function ColorPanel({ kind, title, list, cur, onPick }: {
+  kind: "color" | "highlight"; title: string; list: Swatch[]; cur: string | undefined; onPick: (c: string | null) => void;
+}) {
+  const [hover, setHover] = useState<string | null>(null);
+  const [custom, setCustom] = useState(false);
+  const recent = recentColors();
+  const swatch = (key: string, value: string, label: string) => (
+    <button key={key} type="button" className="se-swatch" aria-label={label} aria-pressed={cur === value}
+      style={{ background: colorValue(value, kind) }} onMouseDown={keep}
+      onMouseEnter={() => setHover(label)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(label)} onBlur={() => setHover(null)}
+      onClick={() => onPick(value)}>
+      {cur === value && <Check size={13} color={kind === "color" ? "#fff" : "var(--se-text)"} />}
+    </button>
+  );
+  const none = kind === "color" ? "Default" : "None";
+  return (
+    <div className="se-colors">
+      <div className="se-menu-label">{title}<span className="se-colors-hover" aria-hidden>{hover}</span></div>
+      <div className="se-swatches" role="group" aria-label={title}>
+        <button type="button" className="se-swatch" data-none aria-label={none} aria-pressed={!cur} onMouseDown={keep}
+          onMouseEnter={() => setHover(none)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(none)} onBlur={() => setHover(null)}
+          onClick={() => onPick(null)} />
+        {list.map((s) => swatch(s.name, s.name, s.label))}
+      </div>
+      {recent.length > 0 && (
+        <>
+          <div className="se-menu-label">Recent</div>
+          <div className="se-swatches se-swatch-recent" role="group" aria-label="Recent colours">
+            {recent.map((h) => swatch(`r${h}`, h, h))}
+          </div>
+        </>
+      )}
+      <MenuSeparator />
+      {custom
+        ? <ColorPicker initial={cur?.startsWith("#") ? cur : recent[0]} onApply={(h) => { rememberColor(h); onPick(h); }} />
+        : (
+          <button type="button" className="se-menu-item" aria-expanded={false} onMouseDown={keep} onClick={() => setCustom(true)}>
+            <Pipette /><span className="se-menu-text">Custom colour…</span>
+            {cur?.startsWith("#") && <span className="se-picker-chip" style={{ width: 14, height: 14, background: cur }} aria-hidden />}
+          </button>
+        )}
+    </div>
   );
 }
 

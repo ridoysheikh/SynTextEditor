@@ -285,6 +285,21 @@ Defined in `layout.css`. `compact` is the default; `comfortable` applies with `d
 | `--se-content-size` | `15px` | paragraph text |
 | `--se-transition` | `140ms ease` | hover and focus transitions |
 | `--se-scrollbar-w` | `6px` | scrollbar width |
+| `--se-popover-max-h` | `min(340px, 60vh)` | tallest a menu or picker gets — past it (or past the room left on screen) it scrolls |
+| `--se-popover-max-w` | `min(300px, 100vw - 12px)` | widest a menu gets; long rows end in "…" |
+| `--se-ctx-max-h` | `min(560px, 100vh - 8px)` | tallest the right-click menu gets |
+| `--se-ctx-max-w` | `280px` | widest the right-click menu gets |
+
+### Overflow
+
+Every floating panel — toolbar menus, the colour picker, the right-click menu and its submenus — opens on the side
+with room, never leaves the window, and scrolls inside itself when taller than the room it has (it never scrolls
+the page, and scrolling it doesn't close it). On opening, the checked row (the current font, size, style…) is
+scrolled into view; in the right-click menu the keyboard-highlighted row follows ↑ ↓. Dialogs are capped at the
+window height and scroll in their body.
+
+Nothing in the chrome is the browser's own widget: the colour picker, sliders, the size field, tooltips and
+scrollbars are drawn by the library and follow the theme variables.
 
 Heading sizes (30 / 24 / 19 / 16px), quote (15px) and code (13px) are fixed in `layout.css` because a size
 chosen in the editor is stored in px relative to them (`BLOCK_SIZE`). To change them, override the classes

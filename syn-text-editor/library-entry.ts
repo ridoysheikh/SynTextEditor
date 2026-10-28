@@ -35,7 +35,8 @@ export {
   ListTool, IndentTool, LinkTool, MediaTool, TableTool, RuleTool, PainterTool, ClearTool, FindTool, PreviewTool, FullscreenTool,
   useToolState, useUI,
 } from "./UI/toolbar/tools";
-export { ToolButton, PopoverButton, Popover, MenuItem, MenuSeparator, MenuLabel, Modal, Button, Field, Layer, LayerContext, cx } from "./UI/primitives";
+export { ToolButton, PopoverButton, Popover, MenuItem, MenuSeparator, MenuLabel, Modal, Button, Field, Slider, Layer, LayerContext, cx } from "./UI/primitives";
+export { ColorPicker, hexToHsv, hsvToHex, normalizeHex } from "./UI/ColorPicker";
 export { MediaGallery } from "./UI/media/MediaGallery";
 export { LinkDialog, MediaDetailsDialog, PreviewDialog, FindBar, StatusBar } from "./UI/dialogs";
 export { FloatBar } from "./UI/FloatBar";

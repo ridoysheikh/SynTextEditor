@@ -146,6 +146,8 @@ All take `editor`. Building blocks for your own controls:
 | `MenuItem` `MenuSeparator` `MenuLabel` | menu rows |
 | `Modal` | a dialog: `title`, `onClose`, `footer?`, `width?` |
 | `Button` `Field` | dialog controls: `tone?: "primary" \| "danger" \| "ghost"`, `size?: "sm"` |
+| `Slider` | a drawn range control: `value`, `min`, `max`, `step`, `onChange`, `label`, `valueText?`, `track?` (a CSS background for the track, e.g. a gradient). Drag, click, ← → ↑ ↓, Page Up / Down, Home / End |
+| `ColorPicker` | the drawn colour picker: `initial?`, `onApply(hex)`, `applyLabel?` — saturation square, hue slider, hex field; `hexToHsv`, `hsvToHex`, `normalizeHex` are exported too |
 | `useToolState(editor)` | `{ state, off }` — the editor's [state](api.md#editorstate) and whether tools should be disabled |
 | `useUI(editor)` | open dialogs, find bar, fullscreen, uploads |
 
@@ -300,8 +302,10 @@ Text colours, highlights, sizes and fonts are inline styles on the span.
 |---|---|
 | `.se-layer` | the portalled wrapper (carries theme classes and `vars`) |
 | `.se-popover` | a menu or popover panel |
-| `.se-menu-item` (`[aria-checked]`, `[data-danger]`), `.se-menu-kbd`, `.se-menu-sep`, `.se-menu-label` | menu rows |
-| `.se-swatches`, `.se-swatch`, `.se-swatch-row` | colour menus |
+| `.se-menu-item` (`[aria-checked]`, `[data-danger]`), `.se-menu-text`, `.se-menu-kbd`, `.se-menu-sep`, `.se-menu-label` | menu rows |
+| `.se-colors`, `.se-colors-hover`, `.se-swatches`, `.se-swatch` (`[data-none]`) | colour menus |
+| `.se-picker`, `.se-sv`, `.se-sv-thumb`, `.se-picker-row`, `.se-picker-chip` | the custom colour picker |
+| `.se-slider`, `.se-slider-track`, `.se-slider-fill`, `.se-slider-thumb` (`[data-track]` for a painted track) | sliders |
 | `.se-grid-pick`, `.se-grid-cell`, `.se-grid-caption` | table size picker |
 | `.se-tip` | tooltip |
 | `.se-backdrop` → `.se-modal` → `.se-modal-head` / `.se-modal-title` / `.se-modal-body` / `.se-modal-foot` | dialogs |
