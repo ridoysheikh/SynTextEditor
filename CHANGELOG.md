@@ -8,6 +8,8 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-29
+
 ### Added
 
 - **Sheets** — `dialogs: "sheet"` (or per dialog: `{ gallery: "sheet" }`) opens the dialogs as a panel from the right
@@ -107,7 +109,8 @@ The first release.
 - **Docs** — getting started, configuration, theming, customization, components, right-click menu, storage, API
   reference and the document model, in `docs/`.
 
-[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.1.0...v0.2.0
