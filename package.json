@@ -43,7 +43,8 @@
   "files": [
     "dist-lib",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "main": "./dist-lib/index.cjs",
   "module": "./dist-lib/index.mjs",

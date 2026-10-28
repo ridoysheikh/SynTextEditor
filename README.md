@@ -44,6 +44,8 @@ Your `package.json` then has `"@syntext/react": "https://github.com/…/syntext-
   — handy for trying it out, but pin a version in real projects: lockfiles record the file's checksum, and "latest"
   changes underneath it.
 - **Checking the download:** each release carries `SHA256SUMS`.
+- **What changed:** see [CHANGELOG.md](CHANGELOG.md) — every release lists what was added, changed, fixed or
+  removed, and the release notes on GitHub say the same.
 - **Private CI or offline:** download the `.tgz` into your repo (e.g. `vendor/`) and install it by path:
   `npm install ./vendor/syntext-react-0.1.0.tgz`.
 
