@@ -8,6 +8,8 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-29
+
 ### Added
 
 - **Caret context** — `editor.getCaretContext()` returns the text of the caret's block, the caret's offset into it
@@ -80,6 +82,7 @@ The first release.
 - **Docs** — getting started, configuration, theming, customization, components, right-click menu, storage, API
   reference and the document model, in `docs/`.
 
-[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ridoysheikh/SynTextEditor/releases/tag/v0.1.0
