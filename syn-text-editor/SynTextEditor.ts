@@ -154,6 +154,11 @@ export interface SynTextEditorConfig {
   /** Undo steps kept (default 300). */
   history?: number;
   /**
+   * A pasted address of an image or video (`.png`, `.mp4`…), alone on an empty line, becomes the picture or video
+   * instead of text. Default false; Ctrl+Shift+V always pastes plain text. Live.
+   */
+  embedUrls?: boolean;
+  /**
    * How dialogs are shown: `"dialog"` (default, centred) or `"sheet"` (a panel from the right edge — its top
    * offset is `--se-sheet-top`). An object chooses per dialog: `{ default: "dialog", gallery: "sheet" }`.
    */
@@ -206,7 +211,7 @@ const isAdapter = (s: StorageAdapter | RestStorageOptions): s is StorageAdapter 
 export const LIVE_OPTIONS = [
   "preset", "formats", "toolbar", "statusbar", "stickyToolbar", "toolbarWrap", "placeholder", "maxLength", "minHeight",
   "maxHeight", "variant", "spellCheck", "ariaLabel", "theme", "density", "vars", "classNames", "styles", "colors",
-  "highlights", "fonts", "sizes", "storage", "upload", "contextMenu", "components", "dialogs",
+  "highlights", "fonts", "sizes", "storage", "upload", "contextMenu", "components", "dialogs", "embedUrls",
 ] as const satisfies readonly (keyof SynTextEditorConfig)[];
 export type LiveOptions = Pick<SynTextEditorConfig, (typeof LIVE_OPTIONS)[number]>;
 
@@ -314,6 +319,7 @@ export class SynTextEditor {
       schema: this.schema,
       readOnly: this.config.readOnly,
       history: this.config.history,
+      embedUrls: () => !!this.config.embedUrls,
       onChange: (d) => {
         this.doc = d;
         const out = isEmptyDoc(d) ? null : d;
@@ -430,8 +436,8 @@ export class SynTextEditor {
   insertHTML(html: string) { this.engine?.insertHTML(html); }
   insertRule() { this.engine?.insertRule(); }
   insertTable(rows = 3, cols = 3, header = true) { this.engine?.insertTable(rows, cols, header); }
-  insertImage(src: string, opts: { alt?: string; caption?: string; width?: number } = {}) { this.engine?.insertAtom({ type: "image", src, ...opts, spans: [] }); }
-  insertVideo(src: string, opts: { caption?: string; width?: number; poster?: string } = {}) {
+  insertImage(src: string, opts: { alt?: string; caption?: string; width?: number; w?: number; h?: number; fit?: "contain" | "cover"; align?: "left" | "right"; wrap?: true; link?: string } = {}) { this.engine?.insertAtom({ type: "image", src, ...opts, spans: [] }); }
+  insertVideo(src: string, opts: { caption?: string; width?: number; w?: number; h?: number; fit?: "contain" | "cover"; align?: "left" | "right"; wrap?: true; poster?: string } = {}) {
     const poster = safePoster(opts.poster);
     this.engine?.insertAtom({ type: "video", src, ...opts, poster, spans: [] });
   }

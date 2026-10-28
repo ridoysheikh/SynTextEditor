@@ -53,6 +53,7 @@ function Note({ dark, compact, locked }: Props) {
 |---|---|---|---|
 | `readOnly` | `boolean` | `false` | No editing; the toolbar is disabled, links open on click. Live. |
 | `autoFocus` | `boolean` | `false` | Focus when mounted. |
+| `embedUrls` | `boolean` | `false` | A pasted address of an image or video (`.png`, `.jpg`, `.webp`, `.mp4`, `.webm`…), alone on an empty line, becomes the picture or video instead of text. Ctrl+Shift+V pastes plain text. Live. |
 | `spellCheck` | `boolean` | `true` | The browser's spell check. |
 | `id` | `string` | — | On the editable element, for `<label htmlFor>`. |
 | `ariaLabel` | `string` | `"Rich text editor"` | Accessible name. |

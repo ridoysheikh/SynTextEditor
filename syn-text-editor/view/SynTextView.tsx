@@ -6,7 +6,7 @@
 import { createElement, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { VideoPlayer, type VideoPlayerProps } from "./VideoPlayer";
 import { isAtom, toDoc, type Block, type Cell, type RichDoc, type Span } from "../core/model";
-import { blockClass, blockData, fontFaceCSS, fontStylesheets, formatBytes, listMarkers, resolveFonts, spanClass, spanStyle, usedFonts, type FontsConfig } from "../core/styles";
+import { blockClass, blockData, fontFaceCSS, fontStylesheets, formatBytes, listMarkers, mediaLayout, resolveFonts, spanClass, spanStyle, usedFonts, type FontsConfig } from "../core/styles";
 
 export interface SynTextViewProps {
   /** A document, its JSON, or plain text. */
@@ -57,14 +57,16 @@ function BlockView({ block: b, marker, target, player: Player }: { block: Block;
     case "hr": return <div className={cls}><hr /></div>;
     case "image":
     case "video": {
+      const lay = mediaLayout(b);
+      const picture = <img src={b.src} alt={b.alt ?? ""} loading="lazy" decoding="async" style={lay.media} />;
       const media = b.type === "image"
-        ? <img src={b.src} alt={b.alt ?? ""} loading="lazy" decoding="async" />
+        ? (b.link ? <a className="se-media-link" href={b.link} target="_blank" rel="noopener noreferrer">{picture}</a> : picture)
         : Player
-          ? <Player src={b.src ?? ""} poster={b.poster} label={b.caption} Default={VideoPlayer} />
-          : <VideoPlayer src={b.src ?? ""} poster={b.poster} label={b.caption} />;
+          ? <Player src={b.src ?? ""} poster={b.poster} label={b.caption} style={lay.media} Default={VideoPlayer} />
+          : <VideoPlayer src={b.src ?? ""} poster={b.poster} label={b.caption} style={lay.media} />;
       return (
-        <div className={cls} {...data}>
-          <figure className="se-figure" style={b.width ? { width: `${b.width}%` } : undefined}>
+        <div className={cls} {...data} style={lay.outer}>
+          <figure className="se-figure" style={lay.figure}>
             {media}
             {b.caption && <figcaption className="se-caption">{b.caption}</figcaption>}
           </figure>

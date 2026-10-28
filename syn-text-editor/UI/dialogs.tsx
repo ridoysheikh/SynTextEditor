@@ -5,14 +5,14 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Camera, CaseSensitive, ChevronDown, ChevronUp, Copy, ExternalLink, Images, Loader2, Unlink, Upload, X } from "lucide-react";
 import { toHTML } from "../core/html";
-import { clampWidth, safeLink } from "../core/model";
+import { MEDIA_MAX, MEDIA_MIN, safeLink } from "../core/model";
 import { isCollapsed } from "../core/ops";
 import { useEditorValue } from "../hooks";
 import type { SynTextEditor } from "../SynTextEditor";
 import { captureFrame } from "../view/player";
 import { SynTextView } from "../view/SynTextView";
 import { VideoPlayer as DefaultVideoPlayer } from "../view/VideoPlayer";
-import { Button, Field, Modal, Slider, ToolButton, cx, overridable } from "./primitives";
+import { Button, Field, Modal, ToolButton, cx, overridable } from "./primitives";
 import { keys, useToolState, useUI } from "./toolbar/tools";
 
 /** The video player of the dialog preview. Slot `VideoPlayer`. */
@@ -21,8 +21,11 @@ const VideoPlayer = overridable("VideoPlayer", DefaultVideoPlayer);
 function LinkDialogBase({ editor, onClose }: { editor: SynTextEditor; onClose: () => void }) {
   const [state] = useState(() => editor.getState());
   const sel = editor.getSelection();
-  const bare = !!sel && isCollapsed(sel) && !state?.link;
-  const [href, setHref] = useState(state?.link ?? "");
+  // An image selected as a whole is linked itself; otherwise it is the link under the caret or selection.
+  const picture = state?.atom != null ? editor.getDoc().blocks[state.atom] : null;
+  const current = picture?.type === "image" ? picture.link : picture ? undefined : state?.link ?? undefined;
+  const bare = !picture && !!sel && isCollapsed(sel) && !state?.link;
+  const [href, setHref] = useState(current ?? "");
   const [text, setText] = useState("");
   const safe = safeLink(href);
   const apply = () => {
@@ -31,10 +34,10 @@ function LinkDialogBase({ editor, onClose }: { editor: SynTextEditor; onClose: (
     requestAnimationFrame(() => editor.setLink(safe, bare ? text : undefined));
   };
   return (
-    <Modal title={state?.link ? "Edit link" : "Add link"} onClose={onClose} width={440} kind="link" variant={editor.dialogVariant("link")}
+    <Modal title={current ? "Edit link" : "Add link"} onClose={onClose} width={440} kind="link" variant={editor.dialogVariant("link")}
       footer={
         <>
-          {state?.link && <Button tone="danger" onClick={() => { onClose(); requestAnimationFrame(() => editor.setLink(undefined)); }}><Unlink />Remove link</Button>}
+          {current && <Button tone="danger" onClick={() => { onClose(); requestAnimationFrame(() => editor.setLink(undefined)); }}><Unlink />Remove link</Button>}
           <span className="se-tb-spacer" />
           <Button onClick={onClose}>Cancel</Button>
           <Button tone="primary" disabled={!safe} onClick={apply}>Apply</Button>
@@ -62,41 +65,132 @@ function MediaDetailsDialogBase({ editor, index, onClose }: { editor: SynTextEdi
   const [alt, setAlt] = useState(block?.alt ?? "");
   const [caption, setCaption] = useState(block?.caption ?? "");
   const [name, setName] = useState(block?.name ?? "");
-  const [width, setWidth] = useState(block?.width ?? 100);
   const [poster, setPoster] = useState(block?.poster);
+  // Size: a width in px (free, not bounded by the page) or as a percent of it, and an optional fixed height.
+  const [unit, setUnit] = useState<"px" | "%">(block?.width && !block.w ? "%" : "px");
+  const [wv, setWv] = useState(block?.w ? String(block.w) : block?.width ? String(block.width) : "");
+  const [hv, setHv] = useState(block?.h ? String(block.h) : "");
+  const [keep, setKeep] = useState(true);
+  const [fit, setFit] = useState<"contain" | "cover" | undefined>(block?.fit);
+  const [place, setPlace] = useState<"left" | "center" | "right">(block?.align === "left" || block?.align === "right" ? block.align : "center");
+  const [wrap, setWrap] = useState(!!block?.wrap);
+  const [link, setLink] = useState(block?.link ?? "");
+  // The picture's proportions: its own when it has loaded, what is drawn until then.
+  const drawn = editor.engine?.elementOf(index)?.querySelector<HTMLElement>("img, .se-player")?.getBoundingClientRect();
+  const [ratio, setRatio] = useState(drawn && drawn.height ? drawn.width / drawn.height : 0);
   if (!block) return null;
-  const patch = () => block.type === "file"
-    ? { name: name.trim() || undefined }
-    : {
-        alt: block.type === "image" ? alt.trim() || undefined : undefined, caption: caption.trim() || undefined, width: clampWidth(width),
-        ...(block.type === "video" ? { poster } : {}),
-      };
+  const media = block.type === "image" || block.type === "video";
+  const num = (v: string) => { const n = Number(v); return v.trim() && Number.isFinite(n) && n > 0 ? n : undefined; };
+  const safeLinkValue = link.trim() ? safeLink(link) : undefined;
+  const badLink = !!link.trim() && !safeLinkValue;
+  const setWidth = (v: string) => {
+    setWv(v.replace(/[^\d]/g, ""));
+    const n = num(v);
+    if (keep && unit === "px" && n && ratio && hv) setHv(String(Math.round(n / ratio)));
+  };
+  const setHeight = (v: string) => {
+    setHv(v.replace(/[^\d]/g, ""));
+    const n = num(v);
+    if (keep && unit === "px" && n && ratio && wv) setWv(String(Math.round(n * ratio)));
+  };
+  const switchUnit = (u: "px" | "%") => {
+    if (u === unit) return;
+    setUnit(u);
+    if (u === "%") setHv("");                                         // a percent width follows the page: a fixed height would distort it
+    setWv(u === "px" && drawn?.width ? String(Math.round(drawn.width)) : "");
+  };
+  const patch = (): Partial<import("../core/model").Block> => {
+    if (block.type === "file") return { name: name.trim() || undefined };
+    const wn = num(wv);
+    const hn = num(hv);
+    return {
+      alt: block.type === "image" ? alt.trim() || undefined : undefined,
+      caption: caption.trim() || undefined,
+      ...(unit === "px" ? { w: wn, width: undefined } : { width: wn, w: undefined }),
+      h: hn,
+      fit: hn ? fit : undefined,
+      align: place === "center" ? undefined : place,
+      wrap: wrap && place !== "center" ? true : undefined,
+      ...(block.type === "image" ? { link: safeLinkValue } : {}),
+      ...(block.type === "video" ? { poster } : {}),
+    };
+  };
   const save = () => {
+    if (badLink) return;
     const p = patch();
     onClose();
     requestAnimationFrame(() => editor.engine?.updateAtom(p, index));
   };
   // The library replaces this dialog for a moment: keep what was edited, and it comes back here after.
   const library = () => { editor.engine?.updateAtom(patch(), index); editor.openThumbnailLibrary(index); };
+  const reset = () => { setWv(""); setHv(""); setFit(undefined); };
   return (
-    <Modal title={block.type === "file" ? "File details" : block.type === "video" ? "Video details" : "Image details"} onClose={onClose} width={480} kind="media" variant={editor.dialogVariant("media")}
-      footer={<><span className="se-tb-spacer" /><Button onClick={onClose}>Cancel</Button><Button tone="primary" onClick={save}>Save</Button></>}>
+    <Modal title={block.type === "file" ? "File details" : block.type === "video" ? "Video details" : "Image details"} onClose={onClose} width={520} kind="media" variant={editor.dialogVariant("media")}
+      footer={<><span className="se-tb-spacer" /><Button onClick={onClose}>Cancel</Button><Button tone="primary" disabled={badLink} onClick={save}>Save</Button></>}>
       <form className="se-modal-body se-stack" onSubmit={(e) => { e.preventDefault(); save(); }}>
         {block.type === "image" && (
           <>
             <div className="se-preview-frame" style={{ padding: 8, textAlign: "center" }}>
-              <img src={block.src} alt="" style={{ maxWidth: "100%", maxHeight: 180, borderRadius: 6 }} />
+              <img src={block.src} alt="" style={{ maxWidth: "100%", maxHeight: 180, borderRadius: 6 }}
+                onLoad={(e) => { const i = e.currentTarget; if (i.naturalWidth && i.naturalHeight) setRatio(i.naturalWidth / i.naturalHeight); }} />
             </div>
             <Field label="Alt text — what the image shows, for screen readers"><input className="se-input" data-autofocus value={alt} onChange={(e) => setAlt(e.target.value)} /></Field>
           </>
         )}
         {block.type === "video" && <VideoThumbnail editor={editor} src={block.src ?? ""} poster={poster} onPoster={setPoster} onLibrary={library} />}
-        {block.type !== "file" && (
+        {media && (
           <>
             <Field label="Caption"><input className="se-input" value={caption} onChange={(e) => setCaption(e.target.value)} /></Field>
-            <Field label={`Width — ${width}%`}>
-              <Slider label="Width" min={10} max={100} step={5} value={width} valueText={`${width}%`} onChange={setWidth} />
-            </Field>
+            <div className="se-field">
+              <span>Size</span>
+              <div className="se-size-grid">
+                <div className="se-inline">
+                  <input className="se-input" inputMode="numeric" aria-label="Width" placeholder="Auto" value={wv} onChange={(e) => setWidth(e.target.value)} />
+                  <div className="se-seg" role="group" aria-label="Width unit">
+                    {(["px", "%"] as const).map((u) => <button key={u} type="button" aria-pressed={unit === u} onClick={() => switchUnit(u)}>{u}</button>)}
+                  </div>
+                </div>
+                <span className="se-times" aria-hidden>×</span>
+                <div className="se-inline">
+                  <input className="se-input" inputMode="numeric" aria-label="Height in px" placeholder="Auto" value={hv} disabled={unit === "%"} onChange={(e) => setHeight(e.target.value)} />
+                  <span className="se-unit">px</span>
+                </div>
+              </div>
+              <p className="se-hint">
+                {unit === "px" ? `${MEDIA_MIN}–${MEDIA_MAX} px, free of the page width.` : "5–100 % of the page width."} Leave the height on Auto to keep the proportions.
+              </p>
+            </div>
+            <div className="se-row-opts">
+              <label className="se-check"><input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} disabled={unit === "%"} />Keep proportions while typing</label>
+              <Button size="sm" tone="ghost" onClick={reset}>Original size</Button>
+            </div>
+            {hv && (
+              <div className="se-field">
+                <span>When the box is not the picture's shape</span>
+                <div className="se-seg" role="group" aria-label="Fit" style={{ alignSelf: "flex-start" }}>
+                  {([[undefined, "Stretch"], ["contain", "Fit inside"], ["cover", "Fill and crop"]] as const).map(([v, label]) => (
+                    <button key={label} type="button" aria-pressed={fit === v} onClick={() => setFit(v)}>{label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="se-field">
+              <span>Position</span>
+              <div className="se-inline" style={{ flexWrap: "wrap" }}>
+                <div className="se-seg" role="group" aria-label="Position">
+                  {(["left", "center", "right"] as const).map((v) => <button key={v} type="button" aria-pressed={place === v} onClick={() => setPlace(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}
+                </div>
+                <label className="se-check" style={place === "center" ? { opacity: .5 } : undefined}>
+                  <input type="checkbox" checked={wrap && place !== "center"} disabled={place === "center"} onChange={(e) => setWrap(e.target.checked)} />Text wraps around it
+                </label>
+              </div>
+            </div>
+            {block.type === "image" && (
+              <Field label="Link — where a click on the picture goes">
+                <input className="se-input" placeholder="https://… · mailto: · tel:" value={link} onChange={(e) => setLink(e.target.value)} aria-invalid={badLink} />
+              </Field>
+            )}
+            {badLink && <p className="se-error">Use a web address, mailto: or tel:</p>}
           </>
         )}
         {block.type === "file" && <Field label="Name shown"><input className="se-input" data-autofocus value={name} onChange={(e) => setName(e.target.value)} /></Field>}

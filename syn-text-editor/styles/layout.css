@@ -314,6 +314,16 @@
 .se-content .se-image[data-align="left"], .se-content .se-video[data-align="left"] { text-align: left; }
 .se-content .se-image[data-align="right"], .se-content .se-video[data-align="right"] { text-align: right; }
 .se-content .se-figure { position: relative; display: inline-block; max-width: 100%; margin: 0; vertical-align: top; }
+/* Text flowing around an image or video aligned left or right. */
+.se-content { display: flow-root; }
+.se-content [data-wrap] { padding: 0; max-width: 100%; text-align: left; }
+.se-content [data-wrap][data-align="left"] { float: left; margin: .25em var(--se-wrap-gap, 1em) .5em 0; }
+.se-content [data-wrap][data-align="right"] { float: right; margin: .25em 0 .5em var(--se-wrap-gap, 1em); }
+.se-content [data-wrap] .se-figure, .se-content figure[data-wrap] { display: block; }
+/* A px width can pass the content width: in a viewer it scrolls sideways instead of breaking the page. */
+.se-content:not(.se-surface) [data-free]:not([data-wrap]) { overflow-x: auto; }
+.se-content .se-figure .se-player[style*="height"] { display: block; }
+.se-content .se-figure .se-player[style*="height"] video { height: 100%; object-fit: inherit; }
 .se-content figure.se-image, .se-content figure.se-video { margin-left: 0; margin-right: 0; }
 .se-content .se-figure img, .se-content .se-figure video,
 .se-content figure.se-image img, .se-content figure.se-video video { display: block; width: 100%; max-width: 100%; height: auto; border-radius: var(--se-radius-sm); }
@@ -351,13 +361,35 @@
 .se-surface > [data-selected].se-hr hr { outline: 2px solid var(--se-accent); outline-offset: 2px; border-radius: var(--se-radius-sm); }
 .se-surface > [data-selected].se-hr hr { outline-offset: 4px; }
 .se-surface .se-resize {
-  position: absolute; right: -6px; bottom: -6px; width: 14px; height: 14px;
+  position: absolute; width: 12px; height: 12px;
   background: var(--se-accent); border: 2px solid var(--se-bg); border-radius: 50%;
-  cursor: nwse-resize; opacity: 0; transition: opacity var(--se-transition);
+  opacity: 0; pointer-events: none; transition: opacity var(--se-transition); touch-action: none; z-index: 2;
 }
-.se-surface > [data-selected] .se-resize { opacity: 1; }
+.se-surface > [data-selected] .se-resize { opacity: 1; pointer-events: auto; }
+.se-surface .se-resize[data-resize="nw"] { left: -6px; top: -6px; cursor: nwse-resize; }
+.se-surface .se-resize[data-resize="ne"] { right: -6px; top: -6px; cursor: nesw-resize; }
+.se-surface .se-resize[data-resize="se"] { right: -6px; bottom: -6px; cursor: nwse-resize; }
+.se-surface .se-resize[data-resize="sw"] { left: -6px; bottom: -6px; cursor: nesw-resize; }
+/* Edge handles are bars, easy to hit and clearly different from the corners. */
+.se-surface .se-resize[data-resize="n"], .se-surface .se-resize[data-resize="s"] { left: 50%; width: 28px; height: 8px; margin-left: -14px; border-radius: 4px; cursor: ns-resize; }
+.se-surface .se-resize[data-resize="e"], .se-surface .se-resize[data-resize="w"] { top: 50%; width: 8px; height: 28px; margin-top: -14px; border-radius: 4px; cursor: ew-resize; }
+.se-surface .se-resize[data-resize="n"] { top: -4px; } .se-surface .se-resize[data-resize="s"] { bottom: -4px; }
+.se-surface .se-resize[data-resize="e"] { right: -4px; } .se-surface .se-resize[data-resize="w"] { left: -4px; }
 .se-content .se-resize { display: none; }
 .se-surface .se-resize { display: block; }
+/* The size while dragging. */
+.se-surface .se-figure[data-size]::after {
+  content: attr(data-size); position: absolute; left: 50%; top: 6px; transform: translateX(-50%); z-index: 3;
+  padding: 1px 7px; font-size: var(--se-fs-xs, 11px); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none;
+  color: var(--se-bg); background: var(--se-text); border-radius: var(--se-radius-tip, 5px);
+}
+/* A picture that is a link: still selectable in the editor, a click goes to the address in the viewer. */
+.se-content .se-media-link { display: block; color: inherit; text-decoration: none; }
+.se-surface .se-media-link { cursor: default; }
+.se-surface .se-figure[data-link]::before {
+  content: ""; position: absolute; left: 6px; top: 6px; z-index: 2; width: 18px; height: 18px; border-radius: var(--se-radius-sm); pointer-events: none;
+  background: var(--se-accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E") center / 12px no-repeat;
+}
 .se-surface > .se-image img { cursor: default; }
 .se-surface > .se-table { cursor: default; }
 
@@ -522,6 +554,11 @@
 /* Gallery */
 .se-gallery-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: var(--se-modal-gap); }
 .se-gallery-bar .se-input { flex: 1; min-width: 160px; }
+.se-inline { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.se-inline .se-input { min-width: 0; }
+.se-size-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.se-times, .se-unit { color: var(--se-text-2); }
+.se-row-opts { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .se-seg { display: inline-flex; padding: 2px; background: var(--se-surface); border: 1px solid var(--se-border); border-radius: var(--se-radius-sm); }
 .se-seg button { padding: 3px 9px; font: inherit; font-size: var(--se-fs-sm, 12px); color: var(--se-text-2); background: none; border: none; border-radius: 4px; cursor: pointer; }
 .se-seg button[aria-pressed="true"] { color: var(--se-text); background: var(--se-bg); box-shadow: 0 1px 2px rgba(0,0,0,.08); }

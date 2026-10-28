@@ -48,8 +48,18 @@ export interface Block {
   src?: string;
   alt?: string;
   caption?: string;
-  /** percent of the content width, 10–100 */
+  /** image / video: width as a percent of the content width, 5–100 (absent = natural size, up to the full width) */
   width?: number;
+  /** image / video: width in px, 20–10000 — free sizing, not bounded by the content width. Takes the place of `width`. */
+  w?: number;
+  /** image / video: height in px, 20–10000. Without it the height follows the width; with it the media is sized freely. */
+  h?: number;
+  /** image / video with a height: how the picture fills its box — "contain" or "cover" (absent = stretch to fill) */
+  fit?: "contain" | "cover";
+  /** image / video aligned left or right: text flows around it instead of stopping above and below */
+  wrap?: true;
+  /** image: where a click on it goes (the picture is a link) */
+  link?: string;
   name?: string;
   mime?: string;
   bytes?: number;
@@ -94,7 +104,37 @@ const TOKEN = /^[a-z][a-z0-9-]{0,23}$/;
 const FONT = /^[\w\s,'"-]{1,120}$/;
 
 export const clampSize = (n: number) => Math.min(SIZE_MAX, Math.max(SIZE_MIN, Math.round(n)));
-export const clampWidth = (n: number) => Math.min(100, Math.max(10, Math.round(n)));
+export const clampWidth = (n: number) => Math.min(100, Math.max(5, Math.round(n)));
+/** Smallest and largest px size of an image or video. */
+export const MEDIA_MIN = 20;
+export const MEDIA_MAX = 10000;
+export const clampPx = (n: number) => Math.min(MEDIA_MAX, Math.max(MEDIA_MIN, Math.round(n)));
+
+/**
+ * A patch to an image or video, made consistent: a px size replaces a percent one (and the other way round), a fit
+ * needs a height, wrapping needs a left or right alignment, a link belongs to images. `prev` is the block it applies to.
+ */
+export function normaliseMedia(prev: Block, patch: Partial<Block>): Partial<Block> {
+  const p: Partial<Block> = { ...patch };
+  const has = (k: keyof Block) => k in patch;
+  if (has("w") && p.w !== undefined) { p.w = clampPx(p.w); p.width = undefined; }
+  else if (has("width") && p.width !== undefined) {
+    p.width = clampWidth(p.width);
+    if (!has("w")) p.w = undefined;                       // a percent preset sets the width in full: no px width, no fixed height
+    if (!has("h")) p.h = undefined;
+  }
+  if (has("h") && p.h !== undefined) p.h = clampPx(p.h);
+  const h = "h" in p ? p.h : prev.h;
+  if (h === undefined) p.fit = undefined;
+  else if (has("fit") && p.fit !== "contain" && p.fit !== "cover") p.fit = undefined;
+  const align = has("align") ? p.align : prev.align;
+  const wrap = has("wrap") ? p.wrap : prev.wrap;
+  if (wrap && align !== "left" && align !== "right") {
+    if (has("wrap")) p.align = "left"; else p.wrap = undefined;       // asked to wrap: go left; aligned back to the middle: stop wrapping
+  }
+  if (has("link")) p.link = prev.type === "image" ? safeLink(p.link) : undefined;
+  return p;
+}
 
 /** An address safe to put in href: http(s), mailto, tel, a path, or a bare domain (made https). */
 export const safeLink = (href: unknown): string | undefined => {
@@ -233,7 +273,17 @@ export function cleanBlock(raw: unknown, schema: Schema = FULL_SCHEMA): Block | 
     if (!src) return null;
     b.src = src;
     for (const k of ["alt", "caption", "name", "mime", "asset"] as const) if (typeof r[k] === "string" && r[k]) b[k] = (r[k] as string).slice(0, 500);
-    if (typeof r.width === "number" && Number.isFinite(r.width) && r.width < 100) b.width = clampWidth(r.width);
+    if (type !== "file") {
+      const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+      if (num(r.w) !== undefined) b.w = clampPx(r.w as number);
+      else if (num(r.width) !== undefined && (r.width as number) <= 100) b.width = clampWidth(r.width as number);
+      if (num(r.h) !== undefined) {
+        b.h = clampPx(r.h as number);
+        if (r.fit === "contain" || r.fit === "cover") b.fit = r.fit;
+      }
+      if (r.wrap === true && (b.align === "left" || b.align === "right")) b.wrap = true;
+      if (type === "image" && typeof r.link === "string") { const l = safeLink(r.link); if (l) b.link = l; }
+    }
     if (typeof r.bytes === "number" && Number.isFinite(r.bytes) && r.bytes >= 0) b.bytes = Math.floor(r.bytes);
     if (type === "video") { const poster = safePoster(r.poster as string); if (poster) b.poster = poster; }
   }

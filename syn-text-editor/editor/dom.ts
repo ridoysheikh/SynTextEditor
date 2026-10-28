@@ -8,7 +8,7 @@
 import { mountPlayer } from "../view/player";
 import { blockText, isAtom, spansText, type Block, type Cell, type Marks, type Span } from "../core/model";
 import type { Pos } from "../core/ops";
-import { blockClass, blockData, formatBytes, spanClass, spanStyle } from "../core/styles";
+import { blockClass, blockData, formatBytes, mediaLayout, spanClass, spanStyle } from "../core/styles";
 import type { CellRef } from "../core/table";
 
 const FILE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/></svg>';
@@ -58,13 +58,26 @@ function buildAtom(el: HTMLElement, b: Block) {
   if (b.type === "image" || b.type === "video") {
     const fig = document.createElement("figure");
     fig.className = "se-figure";
-    if (b.width) fig.style.width = `${b.width}%`;
+    const lay = mediaLayout(b);
+    if (lay.outer) Object.assign(el.style, lay.outer);
+    if (lay.figure) Object.assign(fig.style, lay.figure);
     if (b.type === "image") {
       const img = document.createElement("img");
       img.src = b.src ?? "";
       img.draggable = false;
       img.alt = b.alt ?? "";
-      fig.append(img);
+      if (lay.media) Object.assign(img.style, lay.media);
+      if (b.link) {
+        const a = document.createElement("a");
+        a.className = "se-media-link";
+        a.href = b.link;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.draggable = false;
+        a.append(img);
+        fig.dataset.link = "";
+        fig.append(a);
+      } else fig.append(img);
     } else {
       // The library's player; a click on the picture selects the block (clickToPlay off), the controls play it.
       const player = document.createElement("div");
@@ -75,6 +88,7 @@ function buildAtom(el: HTMLElement, b: Block) {
       video.preload = "metadata";
       video.draggable = false;
       player.append(video);
+      if (lay.media) Object.assign(player.style, lay.media);
       fig.append(player);
       mountPlayer(player, { clickToPlay: false, label: b.caption || "Video" });
     }
@@ -84,11 +98,14 @@ function buildAtom(el: HTMLElement, b: Block) {
       cap.textContent = b.caption;
       fig.append(cap);
     }
-    const handle = document.createElement("span");
-    handle.className = "se-resize";
-    handle.dataset.resize = "";
-    handle.title = "Drag to resize";
-    fig.append(handle);
+    // Eight handles: corners keep the proportions (Shift: free), edges change one side.
+    for (const dir of ["nw", "n", "ne", "e", "se", "s", "sw", "w"]) {
+      const handle = document.createElement("span");
+      handle.className = "se-resize";
+      handle.dataset.resize = dir;
+      handle.title = dir.length === 2 ? "Drag to resize · Shift for free proportions" : "Drag to stretch";
+      fig.append(handle);
+    }
     el.append(fig);
     return;
   }
@@ -165,7 +182,7 @@ export function frame(el: HTMLElement, b: Block, marker: string | null) {
   const cls = blockClass(b);
   if (el.className !== cls) el.className = cls;
   const data = blockData(b);
-  for (const k of ["align", "indent", "checked"]) {
+  for (const k of ["align", "indent", "checked", "wrap", "free"]) {
     if (data[k] === undefined) delete el.dataset[k];
     else if (el.dataset[k] !== data[k]) el.dataset[k] = data[k];
   }

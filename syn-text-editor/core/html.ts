@@ -11,10 +11,10 @@
  * — so a body can be stored as HTML and opened again. Clipboard HTML also carries the exact blocks in `data-syn`.
  */
 import {
-  BLOCK_SIZE, cleanBlock, clampSize, FULL_SCHEMA, isAtom, normaliseSpans, safeFont, safeLink, safePoster, safeSrc,
+  BLOCK_SIZE, cleanBlock, clampSize, clampPx, FULL_SCHEMA, isAtom, normaliseSpans, safeFont, safeLink, safePoster, safeSrc,
   type Block, type BlockType, type Cell, type Marks, type Schema, type Span,
 } from "./model";
-import { blockClass, blockData, cssText, formatBytes, listMarkers, spanClass, spanStyle } from "./styles";
+import { blockClass, blockData, cssText, formatBytes, listMarkers, mediaLayout, spanClass, spanStyle } from "./styles";
 
 // ── out ──────────────────────────────────────────────────────────────────────
 
@@ -48,21 +48,51 @@ function dataAttrs(b: Block): string {
   return Object.entries(blockData(b)).map(([k, v]) => ` data-${k}="${esc(v)}"`).join("");
 }
 
+/** The sizes, fit and wrapping of an image or video as data attributes — what the reader takes them back from. */
+const mediaData = (b: Block) =>
+  `${b.w ? ` data-w="${b.w}"` : b.width ? ` data-pct="${b.width}"` : ""}${b.h ? ` data-h="${b.h}"` : ""}${b.fit ? ` data-fit="${b.fit}"` : ""}`;
+
+/**
+ * The style of the picture (or the player's box): its width when the block isn't floating, a fixed height and how
+ * it fills it. In email, widths never pass the message width (`max-width:100%`), since there is no page to scroll.
+ */
+function mediaStyle(b: Block, inline: boolean, extra: Record<string, string> = {}): string {
+  const st: Record<string, string> = {};
+  if (!b.wrap) {
+    if (b.w) { st.width = `${b.w}px`; st.maxWidth = inline ? "100%" : "none"; }
+    else if (b.width) { if (inline) st.maxWidth = `${b.width}%`; else st.width = `${b.width}%`; }
+  } else if (inline) st.width = "100%";
+  return cssText({ ...st, ...(mediaLayout(b).media ?? {}), ...extra });
+}
+
 function atomHtml(b: Block, inline: boolean): string {
-  const width = b.width ? (inline ? `max-width:${b.width}%;` : `width:${b.width}%`) : "";
+  const lay = mediaLayout(b);
   const align = b.align ?? "center";
-  const fig = inline ? ` style="margin:1em 0;text-align:${align}"` : ` class="${blockClass(b)}"${b.align ? ` data-align="${b.align}"` : ""}`;
+  let fig: string;
+  if (inline) {
+    // Email has no stylesheet, so text wrapping is a float written out.
+    const wrapW = lay.outer?.width ? `;width:${lay.outer.width};max-width:100%` : "";
+    const margin = align === "right" ? ".25em 0 .5em 1em" : ".25em 1em .5em 0";
+    fig = ` style="${b.wrap ? `float:${align};margin:${margin}${wrapW}` : `margin:1em 0;text-align:${align}`}"${mediaData(b)}`;
+  } else {
+    fig = ` class="${blockClass(b)}"${dataAttrs(b)}${mediaData(b)}${lay.outer ? ` style="${cssText(lay.outer)}"` : ""}`;
+  }
   const cap = b.caption ? `<figcaption${inline ? ' style="font-size:0.85em;opacity:.7;margin-top:.4em"' : ' class="se-caption"'}>${esc(b.caption)}</figcaption>` : "";
   switch (b.type) {
     case "hr": return inline ? '<hr style="border:none;border-top:1px solid #d0d4dc;margin:1em 0">' : `<hr class="${blockClass(b)}">`;
-    case "image":
-      return `<figure${fig}><img src="${esc(b.src ?? "")}" alt="${esc(b.alt ?? "")}"${inline ? ` style="${width}height:auto;border-radius:6px"` : width ? ` style="${width}"` : ""}>${cap}</figure>`;
+    case "image": {
+      const st = inline ? mediaStyle(b, true, { ...(b.h ? {} : { height: "auto" }), borderRadius: "6px" }) : mediaStyle(b, false);
+      const img = `<img src="${esc(b.src ?? "")}" alt="${esc(b.alt ?? "")}"${st ? ` style="${st}"` : ""}>`;
+      const linked = b.link ? `<a${inline ? "" : ' class="se-media-link"'} href="${esc(b.link)}" target="_blank" rel="noopener noreferrer">${img}</a>` : img;
+      return `<figure${fig}>${linked}${cap}</figure>`;
+    }
     case "video":
     {
       // Class mode wraps it for the library's player (`mountPlayers`); `controls` is the fallback without script.
       const poster = b.poster ? ` poster="${esc(b.poster)}"` : "";
-      if (inline) return `<figure${fig}><video src="${esc(b.src ?? "")}"${poster} controls preload="metadata" style="${width}width:100%;border-radius:6px"></video>${cap}</figure>`;
-      return `<figure${fig}><div class="se-player"${width ? ` style="${width}"` : ""}><video src="${esc(b.src ?? "")}"${poster} controls preload="metadata" playsinline></video></div>${cap}</figure>`;
+      if (inline) return `<figure${fig}><video src="${esc(b.src ?? "")}"${poster} controls preload="metadata" style="${mediaStyle(b, true, { ...(b.w && !b.wrap ? {} : { width: "100%" }), borderRadius: "6px" })}"></video>${cap}</figure>`;
+      const wst = mediaStyle(b, false);
+      return `<figure${fig}><div class="se-player"${wst ? ` style="${wst}"` : ""}><video src="${esc(b.src ?? "")}"${poster} controls preload="metadata" playsinline></video></div>${cap}</figure>`;
     }
     case "file": {
       const label = esc(b.name || b.src || "file");
@@ -284,15 +314,26 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
         return;
       }
       const fig = el.closest("figure");
+      const holder = el.parentElement;                                          // the player's box, the link, or the figure
       const caption = fig?.querySelector("figcaption")?.textContent?.trim();
-      const pct = [el.style?.maxWidth, el.style?.width, el.parentElement?.style?.width].find((v) => v?.endsWith("%") && parseFloat(v) > 0 && parseFloat(v) < 100);
-      const figAlign = (fig?.getAttribute("data-align") || fig?.style?.textAlign || "").toLowerCase();
+      const num = (v: string | null | undefined) => { const n = Number(v); return n > 0 && Number.isFinite(n) ? n : undefined; };
+      const px = (v: string | undefined) => (v && /^[\d.]+px$/.test(v) ? parseFloat(v) : undefined);
+      const w = num(fig?.getAttribute("data-w")) ?? px(el.style?.width) ?? px(holder?.style?.width);
+      const h = num(fig?.getAttribute("data-h")) ?? px(el.style?.height) ?? px(holder?.style?.height);
+      const pct = w ? undefined : num(fig?.getAttribute("data-pct")) ?? [el.style?.maxWidth, el.style?.width, holder?.style?.width, fig?.style?.width].find((v) => v?.endsWith("%") && parseFloat(v) > 0 && parseFloat(v) < 100);
+      const fitRaw = fig?.getAttribute("data-fit") || el.style?.objectFit || holder?.style?.objectFit;
+      const float = (fig?.style?.float || "").toLowerCase();
+      const figAlign = (fig?.getAttribute("data-align") || (float === "left" || float === "right" ? float : "") || fig?.style?.textAlign || "").toLowerCase();
+      const wrapped = !!fig && (fig.hasAttribute("data-wrap") || float === "left" || float === "right");
       atom({
         type: tag === "IMG" ? "image" : "video", src, spans: [],
         ...(figAlign === "left" || figAlign === "right" ? { align: figAlign } : {}),
+        ...(wrapped ? { wrap: true as const } : {}),
         ...(el.getAttribute("alt") ? { alt: el.getAttribute("alt")! } : {}), ...(caption ? { caption } : {}),
         ...(tag === "VIDEO" && safePoster(el.getAttribute("poster")) ? { poster: safePoster(el.getAttribute("poster"))! } : {}),
-        ...(pct ? { width: parseFloat(pct) } : {}),
+        ...(w ? { w } : pct ? { width: typeof pct === "number" ? pct : parseFloat(pct) } : {}),
+        ...(h ? { h, ...(fitRaw === "contain" || fitRaw === "cover" ? { fit: fitRaw } : {}) } : {}),
+        ...(tag === "IMG" && ctx.marks.link ? { link: ctx.marks.link } : {}),
       });
       return;
     }

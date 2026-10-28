@@ -291,6 +291,10 @@ Defined in `layout.css`. `compact` is the default; `comfortable` applies with `d
 | `--se-ctx-max-h` | `min(560px, 100vh - 8px)` | tallest the right-click menu gets |
 | `--se-ctx-max-w` | `280px` | widest the right-click menu gets |
 
+### Media
+
+`--se-wrap-gap` (default `1em`) is the space between text and an image or video it wraps around.
+
 ### Icons
 
 Icons are sized in `em`, so they scale with the text next to them (the chrome's `--se-ui-size`, or any `font-size` you

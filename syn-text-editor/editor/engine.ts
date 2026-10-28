@@ -9,8 +9,8 @@
  */
 import { clipboardHtml, parseHtml } from "../core/html";
 import {
-  BLOCK_SIZE, blockLength, blockText, clampSize, clampWidth, cleanBlock, docLength, docToPlain, docWords, emptyBlock, emptyDoc, isAtom,
-  isEmptyDoc, marksOf, normaliseSpans, plainToBlocks,
+  BLOCK_SIZE, blockLength, blockText, clampPx, clampSize, cleanBlock, docLength, docToPlain, docWords, emptyBlock, emptyDoc, isAtom,
+  isEmptyDoc, marksOf, normaliseMedia, normaliseSpans, plainToBlocks, safeLink, MEDIA_MIN,
   type Align, type Block, type ListKind, type Marks, type RichDoc, type Schema, type Span, type TextType, type Toggle,
 } from "../core/model";
 import * as ops from "../core/ops";
@@ -49,6 +49,8 @@ export interface EngineOptions {
   onFocusChange?: (focused: boolean) => void;
   /** Undo steps kept (default 300). */
   history?: number;
+  /** A pasted image or video address, alone on an empty line, becomes the media itself. */
+  embedUrls?: () => boolean;
 }
 type Kind = "type" | "space" | "delete" | "size" | "other";
 interface CellSel { ref: CellRef; sel: Sel }
@@ -619,7 +621,8 @@ export class RichEngine {
   /** Change the selected atom (or the one at `b`). */
   updateAtom(patch: Partial<Block>, b: number | null = this.atomIndex()) {
     if (b === null || !isAtom(this.doc.blocks[b])) return;
-    if (patch.width !== undefined) patch = { ...patch, width: patch.width >= 100 ? undefined : clampWidth(patch.width) };
+    const prev = this.doc.blocks[b];
+    if (prev.type === "image" || prev.type === "video") patch = normaliseMedia(prev, patch);
     this.commit(ops.updateBlock(this.doc, b, patch), this.atomSel(b), "other");
   }
   removeAtom(b: number | null = this.atomIndex()) {
@@ -679,6 +682,11 @@ export class RichEngine {
 
   /** Link the selection (or the link around the caret); a bare caret with an address inserts the address. Empty removes. */
   setLink(href: string | undefined, text?: string) {
+    const atom = this.cell ? null : this.atomIndex();
+    if (atom !== null) {                                              // an image selected as a whole: the picture is the link
+      if (this.doc.blocks[atom].type === "image") this.updateAtom({ link: href ? safeLink(href) : undefined }, atom);
+      return void this.focus();
+    }
     const { doc, sel } = this.view();
     let [from, to] = ordered(sel);
     if (!cmp(from, to)) {
@@ -1091,6 +1099,8 @@ export class RichEngine {
       return;
     }
     const schema = this.opts.schema;
+    const media = !plain && this.opts.embedUrls?.() ? this.mediaFromUrl(text) : null;
+    if (media) { this.insertAtom(media); return; }
     let exact: Block[] | null = null;
     if (!plain) {
       try { const raw = data.getData(MIME); if (raw) exact = (JSON.parse(raw) as unknown[]).map((b) => cleanBlock(b, schema)).filter((b): b is Block => !!b); } catch { /* not ours */ }
@@ -1099,6 +1109,17 @@ export class RichEngine {
     const blocks = exact ?? (!plain && html ? parseHtml(html, schema) : plainToBlocks(text));
     if (!blocks.length && text) return this.insertFragment(plainToBlocks(text));
     this.insertFragment(blocks);
+  }
+  /** A pasted address of an image or video, alone on an empty line, as the block it shows. */
+  private mediaFromUrl(text: string): Block | null {
+    const url = text.trim();
+    if (!/^https?:\/\/\S+$/i.test(url) || this.cell) return null;
+    const cur = this.doc.blocks[ordered(this.sel)[0].b];
+    if (!cur || isAtom(cur) || blockLength(cur) > 0) return null;
+    const path = url.split(/[?#]/)[0].toLowerCase();
+    if (/\.(jpe?g|png|gif|webp|avif|bmp)$/.test(path) && this.opts.schema.has("image")) return { type: "image", src: url, spans: [] };
+    if (/\.(mp4|webm|mov|ogv|m4v)$/.test(path) && this.opts.schema.has("video")) return { type: "video", src: url, spans: [] };
+    return null;
   }
   private onCopy(e: ClipboardEvent | DragEvent, cut: boolean) {
     this.catchUp();
@@ -1173,34 +1194,68 @@ export class RichEngine {
       if (e.clientX < box.left + gutter && e.clientX > box.left + gutter - 26) { e.preventDefault(); this.toggleChecked(b); return; }
     }
     if (!isAtom(blk) || target.closest("td,th")) return;
-    if (target.closest("[data-resize]") && !this.readOnly) { e.preventDefault(); this.startResize(e, b, blockEl); return; }
+    const handle = target.closest<HTMLElement>("[data-resize]");
+    if (handle && !this.readOnly) { e.preventDefault(); this.startResize(e, b, blockEl, handle.dataset.resize ?? "se"); return; }
     if (target.tagName === "VIDEO") { this.selectAtom(b); return; }      // the controls still work
     if (target.closest("a") && !(e.ctrlKey || e.metaKey)) e.preventDefault();
     e.preventDefault();
     this.selectAtom(b);
   }
-  /** Drag the corner of an image or video to set its width (percent of the content width). */
-  private startResize(e: MouseEvent, b: number, el: HTMLElement) {
-    const fig = el.querySelector(".se-figure") as HTMLElement | null;
-    if (!fig) return;
+  /**
+   * Drag a handle of an image or video. Sizes are px, from 20 up, with no upper bound (the page scrolls sideways).
+   * A corner keeps the proportions — Shift frees them; the left / right handles change the width, the top / bottom
+   * ones the height (which then stays fixed, and the picture is stretched or fitted into it).
+   */
+  private startResize(e: MouseEvent, b: number, el: HTMLElement, dir: string) {
+    const fig = el.querySelector<HTMLElement>(".se-figure");
+    const media = fig?.querySelector<HTMLElement>("img, .se-player");
+    if (!fig || !media) return;
     this.selectAtom(b);
     this.resizing = true;
-    const box = el.getBoundingClientRect();
-    const align = this.doc.blocks[b].align ?? "center";
-    let pct = this.doc.blocks[b].width ?? 100;
+    const blk = this.doc.blocks[b];
+    const startW = media.getBoundingClientRect().width;
+    const startH = media.getBoundingClientRect().height;
+    const ratio = startW / (startH || 1);
+    const x0 = e.clientX;
+    const y0 = e.clientY;
+    const sx = dir.includes("e") ? 1 : dir.includes("w") ? -1 : 0;
+    const sy = dir.includes("s") ? 1 : dir.includes("n") ? -1 : 0;
+    // Centred media grows both ways, so a handle has to move twice as far to stay under the pointer.
+    const k = !blk.wrap && (!blk.align || blk.align === "justify") ? 2 : 1;
+    const box = blk.wrap ? el : fig;
+    let w = startW;
+    let h = startH;
+    let setW = false;
+    let setH = false;
     const move = (ev: PointerEvent) => {
-      // Media sits centred unless aligned: a centred one grows both ways, so its width is twice the pointer's reach.
-      const px = align === "right" ? box.right - ev.clientX
-        : align === "left" || align === "justify" ? ev.clientX - box.left
-        : Math.abs(ev.clientX - (box.left + box.width / 2)) * 2;
-      pct = clampWidth((px / box.width) * 100);
-      fig.style.width = `${pct}%`;
+      const dx = (ev.clientX - x0) * sx * k;
+      const dy = (ev.clientY - y0) * sy;
+      const corner = sx !== 0 && sy !== 0;
+      setW = sx !== 0;
+      setH = sy !== 0 && (!corner || ev.shiftKey) || (!!blk.h && corner);
+      if (corner && !ev.shiftKey) {                                   // proportional: the bigger pull decides
+        const byW = startW + dx;
+        const byH = (startH + dy) * ratio;
+        w = clampPx(Math.abs(dx) >= Math.abs(dy * ratio) ? byW : byH);
+        h = w / ratio;
+      } else {
+        w = sx !== 0 ? clampPx(startW + dx) : startW;
+        h = sy !== 0 ? clampPx(startH + dy) : startH;
+      }
+      if (setW) { box.style.width = `${Math.round(w)}px`; box.style.maxWidth = "none"; if (blk.wrap) fig.style.width = "100%"; }
+      if (setH) media.style.height = `${Math.round(h)}px`;
+      fig.dataset.size = `${Math.round(w)} × ${Math.round(setH || blk.h ? h : w / ratio)}`;
     };
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       this.resizing = false;
-      this.updateAtom({ width: pct }, b);
+      delete fig.dataset.size;
+      const patch: Partial<Block> = {};
+      if (setW) patch.w = Math.max(MEDIA_MIN, Math.round(w));
+      if (setH) patch.h = Math.max(MEDIA_MIN, Math.round(h));
+      if (setH && !setW && !blk.w && !blk.width) patch.w = Math.max(MEDIA_MIN, Math.round(startW));   // a fixed height needs a fixed width beside it
+      if (Object.keys(patch).length) this.updateAtom(patch, b);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);

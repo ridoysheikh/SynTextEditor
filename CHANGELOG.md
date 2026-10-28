@@ -8,6 +8,26 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+### Added
+
+- **Free media sizing** — images and videos take a width in px (`w`, 20–10000, no longer bounded by the content
+  width) and a height (`h`), independent of the aspect ratio. A percent width (`width`) now runs 5–100; 100 means the
+  full width. Eight resize handles on a selected image or video: corners keep the proportions (Shift frees them), sides
+  stretch one dimension, with a live size readout. *Exact size…* and the details dialog take typed values, in px or %.
+- **Fit** — with a fixed height, `fit: "contain" | "cover"` chooses how the picture fills its box (default: stretch).
+- **Text wrapping** — `wrap: true` with `align` left or right makes text flow around an image or video. The floating
+  bar has a Text wrap menu; email export writes it as a float.
+- **Linked images** — an image can be a link (`link`): the floating bar's link button, Ctrl+K / `setLink` with the image
+  selected, or the details dialog. Exported and read back as `<a><img></a>`.
+- **`embedUrls`** — a pasted image or video address alone on an empty line becomes the media (off by default).
+- `normaliseMedia()`, `MEDIA_MIN`, `MEDIA_MAX`, `--se-wrap-gap`; `insertImage` / `insertVideo` accept the new fields.
+
+### Changed
+
+- The details dialog has Size (px or %, width × height), Position, text wrap, fit and link instead of a width slider.
+- Image and video HTML carries `data-w`, `data-h`, `data-fit`, `data-pct` and `data-wrap`, and reads back losslessly.
+- A percent width can now be 100 (it was dropped as "no width", which meant the natural size, not the full width).
+
 ## [0.7.1] - 2026-10-29
 
 ### Fixed

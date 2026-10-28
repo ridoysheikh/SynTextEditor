@@ -185,7 +185,24 @@ export function blockData(b: Block): Record<string, string> {
   if (b.align) d.align = b.align;
   if (b.list) d.indent = String(b.indent ?? 0);
   if (b.list === "check" && b.checked) d.checked = "";
+  if (b.wrap) d.wrap = "";
+  if (b.w) d.free = "";
   return d;
+}
+
+/**
+ * How an image or video is laid out, as style objects (camelCase keys) for the three places that draw it — the
+ * editor's DOM, the viewer and the HTML export:
+ * - `outer`: the block's own element, when text wraps around it (it floats, so it carries the width)
+ * - `figure`: the figure — the width, unless it wraps
+ * - `media`: the picture / player itself — a fixed height and how it fills it
+ */
+export interface MediaLayout { outer?: Record<string, string>; figure?: Record<string, string>; media?: Record<string, string> }
+export function mediaLayout(b: Block): MediaLayout {
+  const width = b.w ? `${b.w}px` : b.width ? `${b.width}%` : undefined;
+  const media: Record<string, string> | undefined = b.h ? { height: `${b.h}px`, objectFit: b.fit ?? "fill" } : undefined;
+  if (b.wrap) return { outer: width ? { width } : undefined, figure: { width: "100%" }, media };
+  return { figure: width ? { width, ...(b.w ? { maxWidth: "none" } : {}) } : undefined, media };
 }
 
 const BULLETS = ["•", "◦", "▪"];

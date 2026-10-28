@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toHTML } from "../core/html";
-import { cleanBlock, docLength, docToPlain, docWords, isEmptyDoc, safeLink, safeSrc, schemaOf, toDoc, type RichDoc } from "../core/model";
+import { cleanBlock, normaliseMedia, docLength, docToPlain, docWords, isEmptyDoc, safeLink, safeSrc, schemaOf, toDoc, type RichDoc } from "../core/model";
 import * as ops from "../core/ops";
 import * as tables from "../core/table";
 import { createMemoryStorage } from "../core/storage";
@@ -290,5 +290,71 @@ describe("video thumbnails", () => {
     expect(formatTime(3725)).toBe("1:02:05");
     expect(formatTime(NaN)).toBe("0:00");
     expect(formatTime(Infinity)).toBe("0:00");
+  });
+});
+
+describe("media sizing, wrapping and links", () => {
+  const img = (extra: object = {}) => ({ type: "image", src: "https://x/a.png", spans: [], ...extra });
+  const clean = (b: object) => cleanBlock(b)!;
+
+  it("keeps free px sizes from 20px with no upper bound below the cap", () => {
+    expect(clean(img({ w: 5 })).w).toBe(20);
+    expect(clean(img({ w: 3000, h: 40 }))).toMatchObject({ w: 3000, h: 40 });
+    expect(clean(img({ w: 99999 })).w).toBe(10000);
+  });
+
+  it("a px width replaces a percent one; 100% is a real width", () => {
+    expect(clean(img({ w: 300, width: 50 })).width).toBeUndefined();
+    expect(clean(img({ width: 100 })).width).toBe(100);
+    expect(clean(img({ width: 1 })).width).toBe(5);
+  });
+
+  it("a fit needs a height, wrapping needs left or right", () => {
+    expect(clean(img({ fit: "cover" })).fit).toBeUndefined();
+    expect(clean(img({ h: 100, fit: "cover" })).fit).toBe("cover");
+    expect(clean(img({ h: 100, fit: "stretch" })).fit).toBeUndefined();
+    expect(clean(img({ wrap: true })).wrap).toBeUndefined();
+    expect(clean(img({ wrap: true, align: "right" }))).toMatchObject({ wrap: true, align: "right" });
+  });
+
+  it("only images carry a safe link", () => {
+    expect(clean(img({ link: "https://example.com" })).link).toBe("https://example.com");
+    expect(clean(img({ link: "javascript:alert(1)" })).link).toBeUndefined();
+    expect(cleanBlock({ type: "video", src: "https://x/v.mp4", link: "https://example.com", spans: [] })!.link).toBeUndefined();
+  });
+
+  it("a patch is made consistent", () => {
+    const base = clean(img({ w: 300, h: 100, align: "left", wrap: true }));
+    expect(normaliseMedia(base, { width: 50 })).toMatchObject({ width: 50, w: undefined, h: undefined });
+    expect(normaliseMedia(base, { w: 10 }).w).toBe(20);
+    expect(normaliseMedia(base, { h: undefined })).toMatchObject({ h: undefined, fit: undefined });
+    expect(normaliseMedia(base, { align: undefined }).wrap).toBeUndefined();
+    expect(normaliseMedia(clean(img()), { wrap: true })).toMatchObject({ wrap: true, align: "left" });
+    expect(normaliseMedia(clean(img()), { link: "nope nope" }).link).toBeUndefined();
+  });
+
+  it("writes sizes, wrapping and the link into HTML", () => {
+    const d = doc(img({ w: 640, h: 360, fit: "cover", align: "left", wrap: true, link: "https://example.com/" }) as never);
+    const html = toHTML(d, { wrap: false });
+    expect(html).toContain('data-wrap=""');
+    expect(html).toContain('data-w="640"');
+    expect(html).toContain("height:360px");
+    expect(html).toContain("object-fit:cover");
+    expect(html).toContain('<a class="se-media-link" href="https://example.com/"');
+    const mail = toHTML(d, { mode: "inline" });
+    expect(mail).toContain("float:left");
+    expect(mail).not.toContain("class=");
+  });
+
+  it("email widths never pass the message", () => {
+    const mail = toHTML(doc(img({ w: 2000 }) as never), { mode: "inline" });
+    expect(mail).toContain("width:2000px;max-width:100%");
+  });
+});
+
+describe("media patches", () => {
+  it("a percent preset drops the fixed height and its fit", () => {
+    const base = cleanBlock({ type: "image", src: "https://x/a.png", w: 300, h: 100, fit: "cover", spans: [] })!;
+    expect(normaliseMedia(base, { width: 50 })).toMatchObject({ width: 50, w: undefined, h: undefined, fit: undefined });
   });
 });

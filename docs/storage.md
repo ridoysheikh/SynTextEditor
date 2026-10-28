@@ -156,7 +156,15 @@ it doesn't match `accept`, it's over `maxSize`, or — without storage — it's 
   several; double-click inserts one.
 - **Paste or drop** files anywhere in the editor: they upload and land where they were dropped, at the caret otherwise.
 - **From a link:** the gallery's third tab, or `editor.insertImage(url)` / `insertVideo` / `insertFile`.
-- **Selected image or video:** a floating bar to align, set width (25–100%), edit alt text and caption, replace
-  the file (opens the library), move up or down, or remove. Drag the corner handle to resize.
+- **Selected image or video:** a floating bar to align, choose how text wraps around it, set the size, fit, link (image),
+  edit alt text and caption, replace the file (opens the library), move up or down, or remove.
+- **Resizing:** eight handles on a selected image or video. A corner keeps the proportions (hold **Shift** to free them),
+  a side handle stretches one dimension (top / bottom fix the height). Sizes are px from 20 up, with no upper bound; a
+  readout shows the size while dragging. *Exact size…* in the Size menu (or the details dialog) types the numbers, in px
+  or as a percent of the width.
+- **Behaviour:** *Break text* (own line, aligned left / centre / right) or *Wrap text* with the media on the left or
+  right. **Fit** (stretch, fit inside, fill and crop) applies once a height is set.
+- **Links:** an image can be a link — the floating bar's link button, Ctrl+K with it selected, or the details dialog. A
+  pasted image or video address becomes the media itself with [`embedUrls`](configuration.md#behaviour).
 - **Programmatically:** `editor.uploadFiles(files)` uploads and inserts; `editor.uploadFiles(files, null, false)`
   only uploads and returns the assets.

@@ -6,12 +6,15 @@
 import { useRef, useState, type ReactNode } from "react";
 import {
   AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUp, ArrowUpToLine,
-  ChevronDown, Columns3, Heading, Image as ImageIcon, Pencil, Replace, Rows3, Trash2,
+  ChevronDown, Columns3, Crop, Heading, Image as ImageIcon, Link2, Pencil, Replace, Rows3, Trash2, WrapText,
 } from "lucide-react";
 import type { Block } from "../core/model";
 import type { SynTextEditor } from "../SynTextEditor";
 import { MenuItem, MenuSeparator, PopoverButton, ToolButton, useIsoLayoutEffect, overridable } from "./primitives";
-import { useToolState } from "./toolbar/tools";
+import { keys, useToolState } from "./toolbar/tools";
+
+/** What the Size button shows: the width as set, or "Auto". */
+const sizeLabel = (b: Block) => (b.w ? `${b.w}${b.h ? ` × ${b.h}` : ""}` : b.width ? `${b.width}%${b.h ? ` × ${b.h}` : ""}` : "Auto");
 
 function FloatBarBase({ editor, surface, scroller }: { editor: SynTextEditor; surface: HTMLElement | null; scroller: HTMLElement | null }) {
   const { state } = useToolState(editor);
@@ -87,12 +90,42 @@ function FloatBarBase({ editor, surface, scroller }: { editor: SynTextEditor; su
             <ToolButton label="Align left" active={align === "left"} onClick={() => e?.updateAtom({ align: "left" }, b)}><AlignLeft /></ToolButton>
             <ToolButton label="Centre" active={align === "center"} onClick={() => e?.updateAtom({ align: undefined }, b)}><AlignCenter /></ToolButton>
             <ToolButton label="Align right" active={align === "right"} onClick={() => e?.updateAtom({ align: "right" }, b)}><AlignRight /></ToolButton>
-            <span className="se-sep" />
-            <PopoverButton label="Width" wide icon={<><span className="se-btn-label">{block.width ?? 100}%</span><ChevronDown className="se-caret" /></>}>
-              {(close) => [25, 33, 50, 66, 75, 100].map((w) => (
-                <MenuItem key={w} checked={(block.width ?? 100) === w} onSelect={() => { close(); e?.updateAtom({ width: w }, b); }}>{w}%</MenuItem>
-              ))}
+            <PopoverButton label="Text wrap" active={!!block.wrap} icon={<><WrapText /><ChevronDown className="se-caret" /></>}>
+              {(close) => (
+                <>
+                  <MenuItem checked={!block.wrap} onSelect={() => { close(); e?.updateAtom({ wrap: undefined }, b); }}>Break text — on its own line</MenuItem>
+                  <MenuItem checked={!!block.wrap && align === "left"} onSelect={() => { close(); e?.updateAtom({ align: "left", wrap: true }, b); }}>Wrap text — media on the left</MenuItem>
+                  <MenuItem checked={!!block.wrap && align === "right"} onSelect={() => { close(); e?.updateAtom({ align: "right", wrap: true }, b); }}>Wrap text — media on the right</MenuItem>
+                </>
+              )}
             </PopoverButton>
+            <span className="se-sep" />
+            <PopoverButton label="Size" wide icon={<><span className="se-btn-label">{sizeLabel(block)}</span><ChevronDown className="se-caret" /></>}>
+              {(close) => (
+                <>
+                  <MenuItem checked={!block.w && !block.width && !block.h} onSelect={() => { close(); e?.updateAtom({ w: undefined, width: undefined, h: undefined }, b); }}>Original size</MenuItem>
+                  <MenuSeparator />
+                  {[25, 33, 50, 66, 75, 100].map((w) => (
+                    <MenuItem key={w} checked={!block.w && !block.h && block.width === w}
+                      onSelect={() => { close(); e?.updateAtom({ width: w }, b); }}>{w === 100 ? "Full width" : `${w}% of the width`}</MenuItem>
+                  ))}
+                  <MenuSeparator />
+                  <MenuItem onSelect={() => { close(); editor.openMediaDetails(b); }}>Exact size…</MenuItem>
+                </>
+              )}
+            </PopoverButton>
+            {block.h !== undefined && (
+              <PopoverButton label="Fit in the box" icon={<><Crop /><ChevronDown className="se-caret" /></>}>
+                {(close) => (
+                  <>
+                    <MenuItem checked={!block.fit} onSelect={() => { close(); e?.updateAtom({ fit: undefined }, b); }}>Stretch to fill</MenuItem>
+                    <MenuItem checked={block.fit === "contain"} onSelect={() => { close(); e?.updateAtom({ fit: "contain" }, b); }}>Fit inside — keep proportions</MenuItem>
+                    <MenuItem checked={block.fit === "cover"} onSelect={() => { close(); e?.updateAtom({ fit: "cover" }, b); }}>Fill and crop</MenuItem>
+                  </>
+                )}
+              </PopoverButton>
+            )}
+            {block.type === "image" && <ToolButton label="Link" kbd={keys("Ctrl+K")} active={!!block.link} onClick={() => editor.openLink()}><Link2 /></ToolButton>}
           </>
         )}
         {block.type !== "hr" && (

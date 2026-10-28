@@ -17,8 +17,8 @@ Every block has a `type` and `spans` (empty for blocks that aren't text).
 | `quote` | quotation | `align?` |
 | `code` | code block (line breaks are `\n` in the text) | |
 | `hr` | horizontal rule | |
-| `image` | image | `src`, `alt?`, `caption?`, `width?` (10–99, % of the content width; absent = 100), `align?` (`"left"`, `"right"`; absent = centred), `asset?` |
-| `video` | video | `src`, `poster?` (thumbnail, an image address), `caption?`, `width?`, `align?`, `asset?` |
+| `image` | image | `src`, `alt?`, `caption?`, `link?`, `asset?`, plus the [sizing and layout fields](#image-and-video-size-and-layout) |
+| `video` | video | `src`, `poster?` (thumbnail, an image address), `caption?`, `asset?`, plus the [sizing and layout fields](#image-and-video-size-and-layout) |
 | `file` | attachment | `src`, `name?`, `mime?`, `bytes?`, `asset?` |
 | `table` | table | `rows: Cell[][]`, `head?: true` (first row is a header) |
 
@@ -29,6 +29,21 @@ Every block has a `type` and `spans` (empty for blocks that aren't text).
 | `indent` | list nesting, 1–6 (absent = 0) |
 | `checked` | `true` on a ticked checklist item |
 | `asset` | the storage id the file came from |
+
+### Image and video: size and layout
+
+| Field | |
+|---|---|
+| `w` | width in **px**, 20–10000. Free: not bounded by the content width (a viewer scrolls sideways past it; email caps it at the message width) |
+| `width` | width as a **percent** of the content width, 5–100 (100 = full width). Absent with no `w` = the natural size, up to the full width. A `w` replaces it |
+| `h` | height in px, 20–10000. Without it the height follows the width; with it the box is fixed and the picture is stretched into it |
+| `fit` | with `h`: `"contain"` (keep proportions, fit inside) or `"cover"` (fill and crop). Absent = stretch |
+| `align` | `"left"` or `"right"`; absent = centred |
+| `wrap` | `true` with `align` left or right: text flows around the media instead of stopping above and below it |
+| `link` | image only: where a click on the picture goes (`http(s)`, `mailto:`, `tel:`, a path) |
+
+`normaliseMedia(block, patch)` makes a patch consistent — a px width replaces a percent one, a fit needs a height,
+wrapping needs left or right — and is what `engine.updateAtom` uses.
 
 A table cell is `{ spans: Span[]; align?: "center" | "right" | "justify" }`. Cells hold one paragraph each; line
 breaks inside a cell are `\n`.
