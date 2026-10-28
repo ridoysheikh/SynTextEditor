@@ -8,6 +8,8 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-29
+
 ### Added
 
 - **Free media sizing** — images and videos take a width in px (`w`, 20–10000, no longer bounded by the content
@@ -184,7 +186,8 @@ The first release.
 - **Docs** — getting started, configuration, theming, customization, components, right-click menu, storage, API
   reference and the document model, in `docs/`.
 
-[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.6.0...v0.6.1
