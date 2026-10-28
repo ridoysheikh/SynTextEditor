@@ -125,6 +125,32 @@ export class RichEngine {
     this.root.querySelectorAll<HTMLElement>("td[data-r],th[data-r]").forEach((td) => { td.contentEditable = readOnly ? "false" : "true"; });
   }
   get isReadOnly() { return this.readOnly; }
+  /** What the editor allows from now on (typing, paste, shortcuts). */
+  setSchema(schema: Schema) { this.opts.schema = schema; }
+
+  /**
+   * Before a context menu: an image, video, file, rule or table under the pointer is selected as a whole (as a
+   * click would); otherwise the browser's selection — which a right-click may have just moved — is read in.
+   */
+  prepareContextMenu(target: Element | null) {
+    const blockEl = target ? Array.from(this.root.children).find((k) => k.contains(target)) : undefined;
+    if (blockEl && !target!.closest("td,th")) {
+      const b = Array.prototype.indexOf.call(this.root.children, blockEl);
+      if (isAtom(this.doc.blocks[b])) { this.selectAtom(b); return; }
+    }
+    this.catchUp();
+    this.notify();
+  }
+  /** Where the caret (or the selected atom) is on screen — for a menu opened from the keyboard. */
+  caretPoint(): { x: number; y: number } {
+    const atom = this.cell ? null : this.atomIndex();
+    const el = atom !== null ? this.root.children[atom] : null;
+    const s = window.getSelection();
+    const r = el?.getBoundingClientRect()
+      ?? (s?.rangeCount && this.root.contains(s.anchorNode) ? (s.getRangeAt(0).getClientRects()[0] ?? s.getRangeAt(0).getBoundingClientRect()) : null)
+      ?? this.root.getBoundingClientRect();
+    return { x: Math.round(r.left + (el ? r.width / 2 : 0)), y: Math.round(r.bottom + 2) };
+  }
 
   // ── state for the toolbar ────────────────────────────────────────────────
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn); }; };

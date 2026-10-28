@@ -9,7 +9,7 @@
 ────────────────────────────────────────────── */
 
 /* A standalone viewer carries its own variables; inside the editor or a dialog it inherits theirs. */
-.se-root, .se-layer, .se-scope, .se-content:not(.se-root .se-content):not(.se-layer .se-content) {
+.se-root, .se-layer, .se-scope, .se-content:where(:not(.se-root .se-content):not(.se-layer .se-content)) {
   --se-bg:           #ffffff;   /* the writing surface */
   --se-surface:      #f7f8fa;   /* toolbar, status bar */
   --se-surface-2:    #eceef2;   /* hover */
@@ -59,8 +59,8 @@
 }
 
 /* Dark: an explicit `.se-light` holds an editor light inside a dark app. */
-.se-root.se-dark, .se-layer.se-dark, .se-scope.se-dark, .se-content:not(.se-root .se-content):not(.se-layer .se-content).se-dark,
-.dark .se-root:not(.se-light), .dark .se-layer:not(.se-light), .dark .se-scope:not(.se-light), .dark .se-content:not(.se-root .se-content):not(.se-layer .se-content):not(.se-light) {
+.se-root.se-dark, .se-layer.se-dark, .se-scope.se-dark, .se-content:where(:not(.se-root .se-content):not(.se-layer .se-content)).se-dark,
+.dark .se-root:not(.se-light), .dark .se-layer:not(.se-light), .dark .se-scope:not(.se-light), .dark .se-content:where(:not(.se-root .se-content):not(.se-layer .se-content)):not(.se-light) {
   --se-bg:           #121318;
   --se-surface:      #181a20;
   --se-surface-2:    #23262e;

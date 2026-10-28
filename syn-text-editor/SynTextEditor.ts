@@ -3,7 +3,7 @@
 // to events, open the editor's dialogs. `render()` mounts the UI. No provider, no context, nothing drilled —
 // pass the instance wherever it is needed.
 
-import type { CSSProperties, ReactElement } from "react";
+import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { createElement } from "react";
 import { toHTML, type HtmlOptions } from "./core/html";
 import {
@@ -11,12 +11,15 @@ import {
   type Align, type Block, type Format, type ListKind, type RichDoc, type Schema, type TextType, type Toggle,
 } from "./core/model";
 import type { Sel } from "./core/ops";
+import type { CellRef } from "./core/table";
 import { createRestStorage, kindOf, type Asset, type AssetKind, type RestStorageOptions, type StorageAdapter } from "./core/storage";
 import { COLORS, FONTS, HIGHLIGHTS, SIZES, type FontOption, type Swatch } from "./core/styles";
 import { RichEngine, type EditorState } from "./editor/engine";
+import type { ContextItemId } from "./contextMenu";
 import { PRESETS, type PresetName, type ToolbarLayout } from "./presets";
 
-export type Slot = "root" | "toolbar" | "content" | "surface" | "statusbar";
+/** The parts `classNames` / `styles` reach. "layer" is the wrapper of the editor's menus and dialogs (portalled to <body>). */
+export type Slot = "root" | "toolbar" | "content" | "surface" | "statusbar" | "layer";
 export type ThemeMode = "light" | "dark" | "auto" | "inherit";
 /** Theme variables by name without the prefix: `{ accent: "#e11d48", bg: "#fff" }` → `--se-accent`, `--se-bg`. */
 export type ThemeVars = Partial<Record<
@@ -24,6 +27,50 @@ export type ThemeVars = Partial<Record<
   | "danger" | "popover" | "dialog" | "field" | "field-border" | "link" | "code-bg" | "code-text" | "pre-bg" | "quote-bar"
   | "table-border" | "table-head" | "radius" | "radius-sm" | "font" | "font-mono" | "content-font" | "btn" | "pad-x" | "pad-y"
   | "block-gap" | "list-indent" | (string & {}), string>>;
+
+// ── the right-click menu ────────────────────────────────────────────────────
+
+/** What was right-clicked. */
+export type ContextTarget = "text" | "link" | "image" | "video" | "file" | "rule" | "table" | "cell";
+export interface ContextMenuContext {
+  editor: SynTextEditor;
+  target: ContextTarget;
+  /** text is selected (not just a caret) */
+  hasSelection: boolean;
+  /** the link under the pointer or around the caret */
+  link: string | null;
+  /** block index of the image / video / file / rule / table */
+  index: number | null;
+  block: Block | null;
+  /** the table cell, when `target` is "cell" */
+  cell: CellRef | null;
+  readOnly: boolean;
+  /** where the menu opens (viewport px) */
+  x: number;
+  y: number;
+}
+/** A row in the menu. `items` makes a submenu. A string "separator" is a divider. */
+export type ContextMenuItem = "separator" | {
+  id: string;
+  label: string;
+  icon?: ReactNode;
+  kbd?: string;
+  disabled?: boolean;
+  checked?: boolean;
+  danger?: boolean;
+  onSelect?: (ctx: ContextMenuContext) => void;
+  items?: ContextMenuItem[];
+};
+export interface ContextMenuConfig {
+  /**
+   * Which rows to show. A list of built-in ids picks and orders them (ids that don't apply to what was clicked are
+   * skipped). A function gets the context and the default rows and returns the rows to show — filter, reorder, add
+   * your own. Returning an empty list (or null) lets the browser's own menu open instead.
+   */
+  items?: (ContextItemId | "separator")[] | ((ctx: ContextMenuContext, defaults: ContextMenuItem[]) => ContextMenuItem[] | null | undefined);
+  /** Shift + right-click opens the browser's own menu (default true). */
+  nativeWithShift?: boolean;
+}
 
 export interface UploadConfig {
   /** `accept` for the file picker and a filter for pasted / dropped files. Default: images, video, common documents. */
@@ -46,6 +93,9 @@ export interface SynTextEditorConfig {
   onBlur?: (editor: SynTextEditor) => void;
   /** Uploads, rejected files and storage errors. */
   onError?: (error: Error, editor: SynTextEditor) => void;
+
+  /** The right-click menu: `false` keeps the browser's own; an object chooses and adds items. Default: on. */
+  contextMenu?: boolean | ContextMenuConfig;
 
   /** "full" (a word processor, default), "standard", "basic" (text weight and lists), "minimal". */
   preset?: PresetName;
@@ -80,6 +130,8 @@ export interface SynTextEditorConfig {
 
   /** "light", "dark", "auto" (the system's), or "inherit" (default: a `.dark` ancestor switches it). */
   theme?: ThemeMode;
+  /** "compact" (default) or "comfortable" — the spacing of the toolbar, dialogs and document. */
+  density?: "compact" | "comfortable";
   /** Theme variables set inline on the editor — the quickest way to brand it. */
   vars?: ThemeVars;
   /** Extra classes per part (Tailwind classes work here). */
@@ -95,7 +147,7 @@ export interface SynTextEditorConfig {
   history?: number;
 }
 
-export type EventName = "change" | "state" | "ui" | "focus" | "blur" | "ready" | "error";
+export type EventName = "change" | "state" | "ui" | "focus" | "blur" | "ready" | "error" | "contextmenu";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Listener = (...args: any[]) => void;
 
@@ -105,10 +157,26 @@ export type Modal =
   | { kind: "media"; index: number }
   | { kind: "preview" };
 export interface Upload { id: string; name: string; progress: number; error?: string }
-export interface UIState { modal: Modal | null; find: boolean; fullscreen: boolean; uploads: Upload[] }
+export interface OpenContextMenu { ctx: ContextMenuContext; items: ContextMenuItem[] }
+export interface UIState {
+  modal: Modal | null; find: boolean; fullscreen: boolean; uploads: Upload[]; contextMenu: OpenContextMenu | null;
+  /** goes up each time options change (`setOptions`), so views subscribed to the UI redraw */
+  rev: number;
+}
 
 const DEFAULT_ACCEPT = "image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip";
 const isAdapter = (s: StorageAdapter | RestStorageOptions): s is StorageAdapter => typeof (s as StorageAdapter).upload === "function";
+
+/**
+ * Options that update after the editor is made — the hook passes them on whenever your props change, and
+ * `editor.setOptions()` takes them directly. `value`, `readOnly` and the callbacks are live too (see the hook).
+ */
+export const LIVE_OPTIONS = [
+  "preset", "formats", "toolbar", "statusbar", "stickyToolbar", "toolbarWrap", "placeholder", "maxLength", "minHeight",
+  "maxHeight", "variant", "spellCheck", "ariaLabel", "theme", "density", "vars", "classNames", "styles", "colors",
+  "highlights", "fonts", "sizes", "storage", "upload", "contextMenu",
+] as const satisfies readonly (keyof SynTextEditorConfig)[];
+export type LiveOptions = Pick<SynTextEditorConfig, (typeof LIVE_OPTIONS)[number]>;
 
 /** A stored file → the block that shows it. */
 export function blockFromAsset(a: Asset, kind: AssetKind = kindOf(a.type)): Block {
@@ -119,26 +187,63 @@ export function blockFromAsset(a: Asset, kind: AssetKind = kindOf(a.type)): Bloc
 
 export class SynTextEditor {
   readonly config: SynTextEditorConfig;
-  readonly schema: Schema;
-  readonly toolbar: ToolbarLayout | false;
-  readonly storage: StorageAdapter | null;
+  /** What the editor allows (from `preset` / `formats`). */
+  schema: Schema;
+  /** The toolbar layout in use, or false. */
+  toolbar: ToolbarLayout | false;
+  /** The storage in use, or null. */
+  storage: StorageAdapter | null;
   /** The engine, while the editor is on screen (`render()` mounts it). */
   engine: RichEngine | null = null;
 
   private doc: RichDoc;
   private lastEmitted: unknown;
   private listeners = new Map<EventName, Set<Listener>>();
-  private ui: UIState = { modal: null, find: false, fullscreen: false, uploads: [] };
+  private ui: UIState = { modal: null, find: false, fullscreen: false, uploads: [], contextMenu: null, rev: 0 };
+  private rest: RestStorageOptions | null = null;
   private engineOff: (() => void) | null = null;
 
   constructor(config: SynTextEditorConfig = {}) {
     this.config = { ...config };
-    const preset = PRESETS[config.preset ?? "full"];
-    this.schema = schemaOf(config.formats ?? preset.formats);
-    this.toolbar = config.toolbar === false ? false : config.toolbar ?? preset.toolbar;
-    this.storage = config.storage ? (isAdapter(config.storage) ? config.storage : createRestStorage(config.storage)) : null;
+    this.schema = this.toolbar = false as never;
+    this.storage = null;
+    this.derive(true);
     this.doc = toDoc(config.value, this.schema) ?? emptyDoc();
     this.lastEmitted = config.value;
+  }
+
+  /** Schema, toolbar and storage from the config. */
+  private derive(all: boolean, changed: ReadonlySet<string> = new Set()) {
+    const c = this.config;
+    const preset = PRESETS[c.preset ?? "full"];
+    if (all || changed.has("preset") || changed.has("formats")) {
+      this.schema = schemaOf(c.formats ?? preset.formats);
+      this.engine?.setSchema(this.schema);
+    }
+    if (all || changed.has("preset") || changed.has("toolbar")) this.toolbar = c.toolbar === false ? false : c.toolbar ?? preset.toolbar;
+    if (all || changed.has("storage")) {
+      const st = c.storage;
+      if (!st) { this.storage = null; this.rest = null; }
+      else if (isAdapter(st)) { this.storage = st; this.rest = null; }
+      // REST options are copied into one object the adapter reads on every call, so new headers or urls apply
+      // without losing anything.
+      else if (this.rest) Object.assign(this.rest, st);
+      else { this.rest = { ...st }; this.storage = createRestStorage(this.rest); }
+    }
+  }
+
+  /**
+   * Change options after the editor is made (see `LIVE_OPTIONS`). Formats apply to what's typed and pasted from now
+   * on — the document already written is kept as it is.
+   */
+  setOptions(patch: LiveOptions, { silent = false }: { silent?: boolean } = {}) {
+    const changed = new Set<string>();
+    for (const [k, v] of Object.entries(patch)) {
+      if ((this.config as Record<string, unknown>)[k] !== v) { (this.config as Record<string, unknown>)[k] = v; changed.add(k); }
+    }
+    if (!changed.size) return;
+    this.derive(false, changed);
+    if (!silent) this.setUI({ rev: this.ui.rev + 1 });   // views subscribed to the UI redraw with the new options
   }
 
   /** Callbacks are read live, so a component can pass fresh closures every render. */
@@ -153,6 +258,7 @@ export class SynTextEditor {
   on(event: "change", fn: (value: RichDoc | null) => void): () => void;
   on(event: "state" | "ui" | "focus" | "blur" | "ready", fn: () => void): () => void;
   on(event: "error", fn: (error: Error) => void): () => void;
+  on(event: "contextmenu", fn: (ctx: ContextMenuContext) => void): () => void;
   on(event: EventName, fn: Listener): () => void {
     let set = this.listeners.get(event);
     if (!set) this.listeners.set(event, (set = new Set()));
@@ -279,6 +385,42 @@ export class SynTextEditor {
   toggleFind(open = !this.ui.find) { this.setUI({ find: open }); if (!open) { this.engine?.clearFind(); this.engine?.focus(); } }
   toggleFullscreen(on = !this.ui.fullscreen) { this.setUI({ fullscreen: on }); requestAnimationFrame(() => this.engine?.focus()); }
 
+  /** Whether the right-click menu is on. */
+  get contextMenuEnabled() { return this.config.contextMenu !== false; }
+  /**
+   * Open the right-click menu at a point (viewport px) — by default at the caret. With `target`, the element that
+   * was clicked: an image or table there is selected first, as a right-click does. Returns false when there was
+   * nothing to show (the menu is off, or its items came back empty).
+   */
+  openContextMenu(x?: number, y?: number, target?: Element | null): boolean {
+    const e = this.engine;
+    if (!e || !this.contextMenuEnabled || !SynTextEditor.contextItems) return false;
+    e.prepareContextMenu(target ?? null);
+    if (x === undefined || y === undefined) ({ x, y } = e.caretPoint());
+    const st = e.getState();
+    const doc = e.doc;
+    const index = st.atom ?? st.cell?.b ?? null;
+    const block = index !== null ? doc.blocks[index] ?? null : null;
+    const linkEl = target?.closest?.("a[href]") as HTMLAnchorElement | null;
+    const target_: ContextTarget = st.cell ? "cell"
+      : block?.type === "hr" ? "rule" : block?.type === "image" || block?.type === "video" || block?.type === "file" || block?.type === "table" ? block.type
+      : linkEl || st.link ? "link" : "text";
+    const sel = e.getSelection();
+    const ctx: ContextMenuContext = {
+      editor: this, target: target_, link: linkEl?.getAttribute("href") ?? st.link, index, block, cell: st.cell,
+      hasSelection: !!sel && (sel.anchor.b !== sel.focus.b || sel.anchor.o !== sel.focus.o) && st.atom === null,
+      readOnly: this.isReadOnly(), x, y,
+    };
+    const items = SynTextEditor.contextItems(ctx);
+    if (!items.length) return false;
+    this.setUI({ contextMenu: { ctx, items } });
+    this.emit("contextmenu", ctx);
+    return true;
+  }
+  closeContextMenu() { if (this.ui.contextMenu) this.setUI({ contextMenu: null }); }
+  /** Set by the UI module — builds the rows for a context (defaults, then the host's `contextMenu.items`). */
+  static contextItems: ((ctx: ContextMenuContext) => ContextMenuItem[]) | null = null;
+
   // ── uploads ──────────────────────────────────────────────────────────────
   get uploadConfig(): Required<UploadConfig> {
     const u = this.config.upload ?? {};
@@ -335,10 +477,11 @@ export class SynTextEditor {
       fonts: this.config.fonts ?? FONTS, sizes: this.config.sizes ?? SIZES,
     };
   }
-  /** The class that sets the theme on the root and its layer. */
+  /** The classes that set the theme and density on the root and its layer. */
   get themeClass(): string {
     const t = this.config.theme ?? "inherit";
-    return t === "dark" ? "se-dark" : t === "light" ? "se-light" : t === "auto" ? "se-auto" : "";
+    const theme = t === "dark" ? "se-dark" : t === "light" ? "se-light" : t === "auto" ? "se-auto" : "";
+    return [theme, this.config.density === "comfortable" ? "se-comfortable" : ""].filter(Boolean).join(" ");
   }
   /** `vars` as inline custom properties. */
   get varStyle(): CSSProperties {

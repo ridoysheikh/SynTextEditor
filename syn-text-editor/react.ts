@@ -6,9 +6,9 @@
 //   const editor = useSynTextEditor({ preset: "basic", placeholder: "Say something…", onChange: save })
 //   return <form>{editor.render()}<button onClick={() => post(editor.getValue())}>Send</button></form>
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { RichDoc } from "./core/model";
-import { SynTextEditor, type SynTextEditorConfig } from "./SynTextEditor";
+import { LIVE_OPTIONS, SynTextEditor, type LiveOptions, type SynTextEditorConfig } from "./SynTextEditor";
 import "./render";
 
 export { useEditorValue } from "./hooks";
@@ -17,13 +17,29 @@ export { useEditorValue } from "./hooks";
  * Create an editor tied to this component's lifetime.
  *
  * Returns a STABLE object: it never changes identity, so it is safe in dependency arrays and can be passed
- * through props or closures. `config` is read once — except the callbacks (always the latest), `readOnly`, and
- * `value`: passing a different `value` than the editor last reported replaces the content, so the editor works
- * controlled (`value` + `onChange`) or uncontrolled (read it with `editor.getValue()`).
+ * through props or closures.
+ *
+ * Options stay controlled: change a prop and the editor follows — `value` (a value different from the one the
+ * editor last reported replaces the content), `readOnly`, the callbacks, and every option in `LIVE_OPTIONS`
+ * (look, toolbar, formats, storage, context menu…). Plain-data options are compared by value, so inline objects
+ * don't cause work on every render.
  */
 export function useSynTextEditor(config: SynTextEditorConfig = {}): SynTextEditor {
   const [editor] = useState(() => new SynTextEditor(config));
   editor.updateCallbacks(config);
+  // Options holding functions are read when used — hand over the latest each render, without a redraw.
+  editor.setOptions({ contextMenu: config.contextMenu, storage: config.storage, upload: config.upload }, { silent: true });
+
+  const seen = useRef<string | null>(null);
+  const data: Record<string, unknown> = {};
+  for (const k of LIVE_OPTIONS) if (k !== "contextMenu" && k !== "storage" && k !== "upload") data[k] = config[k];
+  const key = JSON.stringify(data);
+  useEffect(() => {
+    if (seen.current === null) { seen.current = key; return; }            // the constructor already has them
+    if (seen.current === key) return;
+    seen.current = key;
+    editor.setOptions(data as LiveOptions);
+  });
 
   useEffect(() => {
     if (config.readOnly !== undefined && config.readOnly !== editor.isReadOnly()) editor.setReadOnly(config.readOnly);

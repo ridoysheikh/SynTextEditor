@@ -14,6 +14,8 @@ export interface SynTextViewProps {
   style?: CSSProperties;
   /** "light", "dark", or "inherit" (default: a `.dark` ancestor switches it). */
   theme?: "light" | "dark" | "inherit";
+  /** "compact" (default) or "comfortable" spacing. */
+  density?: "compact" | "comfortable";
   /** Shown when there's nothing to show. */
   fallback?: ReactNode;
   /** Link attributes: default opens in a new tab with noopener. */
@@ -23,12 +25,12 @@ export interface SynTextViewProps {
 const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
 const dataProps = (b: Block) => Object.fromEntries(Object.entries(blockData(b)).map(([k, v]) => [`data-${k}`, v]));
 
-export function SynTextView({ value, className, style, theme = "inherit", fallback = null, linkTarget = "_blank" }: SynTextViewProps) {
+export function SynTextView({ value, className, style, theme = "inherit", density, fallback = null, linkTarget = "_blank" }: SynTextViewProps) {
   const doc = toDoc(value);
   if (!doc || !doc.blocks.some((b) => isAtom(b) || b.spans.some((s) => s.text.trim()))) return <>{fallback}</>;
   const markers = listMarkers(doc.blocks);
   return (
-    <div className={cx("se-content", theme === "dark" && "se-dark", theme === "light" && "se-light", className)} style={style}>
+    <div className={cx("se-content", theme === "dark" && "se-dark", theme === "light" && "se-light", density === "comfortable" && "se-comfortable", className)} style={style}>
       {doc.blocks.map((b, i) => <BlockView key={i} block={b} marker={markers[i]} target={linkTarget} />)}
     </div>
   );

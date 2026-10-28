@@ -102,7 +102,7 @@ export function PreviewDialog({ editor, onClose }: { editor: SynTextEditor; onCl
   const copy = async () => {
     try { await navigator.clipboard.writeText(source); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
   };
-  const dark = editor.themeClass === "se-dark" ? "dark" : editor.themeClass === "se-light" ? "light" : "inherit";
+  const dark = editor.config.theme === "dark" ? "dark" : editor.config.theme === "light" ? "light" : "inherit";
   return (
     <Modal title="Preview" onClose={onClose} width={900}>
       <div className="se-tabs" role="tablist">

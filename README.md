@@ -1,5 +1,7 @@
 # SynTextEditor — `@syntext/react`
 
+📖 **Full documentation: [docs/](docs/INDEX.md)** — [configuration](docs/configuration.md), [right-click menu](docs/context-menu.md), [theming](docs/theming.md) (every variable), [customization](docs/customization.md), [storage](docs/storage.md), [API](docs/api.md), [document model](docs/document-model.md).
+
 A rich text editor for React and Next.js. The document is **data, not HTML**: the editor edits a small JSON model,
 the viewer draws it as React elements, and `toHTML` writes it out when you need HTML.
 
@@ -12,6 +14,10 @@ the viewer draws it as React elements, and `toHTML` writes it out when you need 
   endpoints. It handles the gallery, uploads with progress, paste and drop. It stores nothing itself.
 - **Themeable** — every colour and size is a `--se-*` CSS variable under prefixed `se-*` classes, so it never
   collides with your styles. Override variables in CSS, pass `vars` inline, or add Tailwind classes per part.
+- **Controlled** — options are props: change `theme`, `preset`, `toolbar`, `vars`, `readOnly`… and the same editor
+  follows, content and undo kept.
+- **A right-click menu you control** — context-aware rows for text, links, images, files and table cells; pick
+  rows by id, add your own with submenus, or turn it off.
 - **Lightweight** — ~40 KB gzipped for the full editor UI, ~9 KB for the viewer, ~6 KB CSS. Peer deps: React 18+.
   One dependency: `lucide-react` (icons, tree-shaken).
 
@@ -124,6 +130,7 @@ useSynTextEditor({
   classNames: { root: "shadow-xl", toolbar: "px-3", surface: "min-h-64" },  // Tailwind works here
   styles: { root: { maxWidth: 800 } },
   variant: "document",                            // "default" | "borderless" | "document" (a page on a desk)
+  density: "comfortable",                         // "compact" (default) | "comfortable"
 });
 ```
 

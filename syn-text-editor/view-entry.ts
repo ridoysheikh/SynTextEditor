@@ -19,3 +19,7 @@ export type { Swatch, FontOption } from "./core/styles";
 
 /** Plain text of a stored value (a document, its JSON, or text). */
 export { docToPlain as toPlainText } from "./core/model";
+
+/** Presets are plain data — use `PRESETS.basic.formats` with `schemaOf` to validate on a server. */
+export { PRESETS } from "./presets";
+export type { PresetName, Preset, ToolId, ToolbarLayout } from "./presets";

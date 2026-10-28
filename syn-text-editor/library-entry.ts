@@ -6,18 +6,23 @@
 import "./styles/globals.lib.css";
 
 // ── The editor ────────────────────────────────────────────────────────────────
-export { SynTextEditor, createSynTextEditor, blockFromAsset } from "./SynTextEditor";
+export { SynTextEditor, createSynTextEditor, blockFromAsset, LIVE_OPTIONS } from "./SynTextEditor";
 export type {
-  SynTextEditorConfig, UploadConfig, ThemeMode, ThemeVars, Slot, EventName, Modal as EditorModal, Upload, UIState,
+  SynTextEditorConfig, UploadConfig, ThemeMode, ThemeVars, Slot, EventName, Modal as EditorModal, Upload, UIState, LiveOptions,
+  ContextMenuConfig, ContextMenuContext, ContextMenuItem, ContextTarget, OpenContextMenu,
 } from "./SynTextEditor";
+
+// ── Right-click menu ──────────────────────────────────────────────────────────
+export { defaultContextItems, resolveContextItems, pasteFromClipboard, tidy as tidyContextItems, CONTEXT_ITEM_IDS } from "./contextMenu";
+export type { ContextItemId } from "./contextMenu";
+export { ContextMenu } from "./UI/ContextMenu";
 export { useSynTextEditor, useEditorValue, SynEditor } from "./react";
 export { EditorView } from "./render";
 export type { EditorState } from "./editor/engine";
 export { RichEngine } from "./editor/engine";
 
 // ── Presets ───────────────────────────────────────────────────────────────────
-export { PRESETS, TOOL_FORMAT } from "./presets";
-export type { PresetName, Preset, ToolId, ToolbarLayout } from "./presets";
+export { TOOL_FORMAT } from "./presets";
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 export { createRestStorage, createMemoryStorage, kindOf } from "./core/storage";

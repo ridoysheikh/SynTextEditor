@@ -34,7 +34,7 @@ export function inheritsDark(el: HTMLElement | null | undefined): boolean {
 export function Layer({ children }: { children: ReactNode }) {
   const { className, style, anchor } = useContext(LayerContext);
   if (typeof document === "undefined") return null;
-  const inherited = !className && inheritsDark(anchor?.current) ? "se-dark" : "";
+  const inherited = !/\bse-(dark|light|auto)\b/.test(className) && inheritsDark(anchor?.current) ? "se-dark" : "";
   return createPortal(<div className={cx("se-layer", className, inherited)} style={style}>{children}</div>, document.body);
 }
 

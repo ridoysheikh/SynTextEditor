@@ -75,7 +75,7 @@ export function BlockTool({ editor }: ToolProps) {
   const cur = state?.active.block;
   return (
     <PopoverButton label="Text style" wide disabled={off || !!state?.cell || state?.atom !== null}
-      style={{ width: 118 }}
+      style={{ width: 104 }}
       icon={<><span className="se-btn-label" style={{ flex: 1 }}>{cur ? BLOCK_LABEL[cur] : "Mixed"}</span><ChevronDown className="se-caret" /></>}>
       {(close) => types.map((t) => (
         <MenuItem key={t} checked={cur === t} kbd={["p", "h1", "h2", "h3", "h4"].includes(t) ? keys(`Ctrl+Alt+${t === "p" ? 0 : t[1]}`) : undefined}
@@ -104,7 +104,7 @@ export function FontTool({ editor }: ToolProps) {
   const cur = state?.active.marks.font;
   const name = cur ? fonts.find((f) => f.value === cur)?.label ?? cur.split(",")[0].replace(/['"]/g, "") : "Default";
   return (
-    <PopoverButton label="Font" wide disabled={off} style={{ width: 96 }}
+    <PopoverButton label="Font" wide disabled={off} style={{ width: 86 }}
       icon={<><span className="se-btn-label" style={{ flex: 1, fontFamily: cur }}>{name}</span><ChevronDown className="se-caret" /></>}>
       {(close) => (
         <>
@@ -167,7 +167,7 @@ export function ColorTool({ editor, kind }: ToolProps & { kind: "color" | "highl
     <PopoverButton label={kind === "color" ? "Text colour" : "Highlight"} disabled={off}
       icon={<>{kind === "color" ? <Baseline /> : <Highlighter />}<span className="se-swatch-bar" style={{ background: bar, outline: !cur && kind === "highlight" ? "1px dashed var(--se-muted)" : undefined }} /></>}>
       {(close) => (
-        <div style={{ width: 236 }}>
+        <div style={{ width: 214 }}>
           <MenuLabel>{kind === "color" ? "Text colour" : "Highlight"}</MenuLabel>
           <div className="se-swatches" role="group">
             {list.map((s) => (

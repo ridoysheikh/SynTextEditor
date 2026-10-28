@@ -128,7 +128,7 @@ export function MediaGallery({ editor, filter, replace, onClose }: {
         <TabButton id="upload" tab={tab} setTab={setTab} icon={<UploadCloud />}>Upload</TabButton>
         <TabButton id="link" tab={tab} setTab={setTab} icon={<Link2 />}>From a link</TabButton>
       </div>
-      <div className="se-modal-body" style={{ minHeight: 360 }}>
+      <div className="se-modal-body" style={{ minHeight: 300 }}>
         {tab === "library" && storage && (
           <>
             <div className="se-gallery-bar">

@@ -10,8 +10,10 @@
 // Every one of them is `useSynTextEditor(config)` + `{editor.render()}`.
 
 import { useEffect, useMemo, useState } from 'react'
-import { Bold, Italic } from 'lucide-react'
+import { Bold, CalendarDays, Hash, Italic, Sparkles } from 'lucide-react'
 import { useEditorValue, useSynTextEditor } from '@syn/react'
+import type { ContextMenuItem, SynTextEditorConfig } from '@syn/SynTextEditor'
+import type { PresetName } from '@syn/presets'
 import { createMemoryStorage } from '@syn/core/storage'
 import { toHTML } from '@syn/core/html'
 import type { RichDoc } from '@syn/core/model'
@@ -22,10 +24,10 @@ import { SEED, WORD_DOC } from '@test-preview/demo/sample'
 import layoutCss from '@syn/styles/layout.css?inline'
 import themeCss from '@syn/styles/theme.css?inline'
 
-type Demo = 'word' | 'comment' | 'minimal' | 'themed' | 'viewer' | 'custom'
+type Demo = 'word' | 'comment' | 'minimal' | 'themed' | 'controlled' | 'viewer' | 'custom'
 const DEMOS: { id: Demo; label: string }[] = [
   { id: 'word', label: 'Word processor' }, { id: 'comment', label: 'Comment (basic)' }, { id: 'minimal', label: 'Minimal' },
-  { id: 'themed', label: 'Theming' }, { id: 'viewer', label: 'Viewer & HTML' }, { id: 'custom', label: 'Custom toolbar' },
+  { id: 'themed', label: 'Theming' }, { id: 'controlled', label: 'Controlled & right-click' }, { id: 'viewer', label: 'Viewer & HTML' }, { id: 'custom', label: 'Custom toolbar' },
 ]
 
 export default function App () {
@@ -34,7 +36,7 @@ export default function App () {
   return (
     <div className={dark ? 'dark' : ''}>
       <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-        <header className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-white/80 px-4 py-2 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
+        <header className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-white/80 px-3 py-1.5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
           <strong className="mr-3 text-sm tracking-tight">SynTextEditor</strong>
           {DEMOS.map(d => (
             <button key={d.id} onClick={() => setDemo(d.id)}
@@ -47,11 +49,12 @@ export default function App () {
             {dark ? 'Light' : 'Dark'} page
           </button>
         </header>
-        <main className="mx-auto max-w-6xl p-4 md:p-6">
+        <main className="mx-auto max-w-6xl p-3 md:p-4">
           {demo === 'word' && <WordDemo />}
           {demo === 'comment' && <CommentDemo />}
           {demo === 'minimal' && <MinimalDemo />}
           {demo === 'themed' && <ThemedDemo />}
+          {demo === 'controlled' && <ControlledDemo />}
           {demo === 'viewer' && <ViewerDemo />}
           {demo === 'custom' && <CustomToolbarDemo />}
         </main>
@@ -61,7 +64,7 @@ export default function App () {
 }
 
 function Note ({ children }: { children: React.ReactNode }) {
-  return <p className="mb-3 text-sm text-zinc-500 dark:text-zinc-400">{children}</p>
+  return <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">{children}</p>
 }
 
 function WordDemo () {
@@ -97,7 +100,7 @@ function CommentDemo () {
   })
   useEffect(() => { (window as unknown as { __editor: unknown }).__editor = editor }, [editor])
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-3 md:grid-cols-2">
       <div>
         <Note>Text weight and lists only. Controlled: <code>value</code> + <code>onChange</code>.</Note>
         {editor.render()}
@@ -138,10 +141,11 @@ const THEMES: Record<string, Record<string, string>> = {
 function ThemedDemo () {
   const [theme, setTheme] = useState('Rose')
   const [mode, setMode] = useState<'inherit' | 'light' | 'dark'>('inherit')
+  const [density, setDensity] = useState<'compact' | 'comfortable'>('compact')
   return (
     <>
       <Note>Each editor below is themed with <code>vars</code> (inline <code>--se-*</code> variables) and Tailwind <code>classNames</code> on its parts. The menus and dialogs carry the theme too.</Note>
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-2 flex flex-wrap gap-1.5">
         {Object.keys(THEMES).map(t => (
           <button key={t} onClick={() => setTheme(t)} className={`rounded-md px-3 py-1 text-xs ${theme === t ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'border border-zinc-300 dark:border-zinc-700'}`}>{t}</button>
         ))}
@@ -149,16 +153,21 @@ function ThemedDemo () {
         {(['inherit', 'light', 'dark'] as const).map(m => (
           <button key={m} onClick={() => setMode(m)} className={`rounded-md px-3 py-1 text-xs ${mode === m ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'border border-zinc-300 dark:border-zinc-700'}`}>{m}</button>
         ))}
+        <span className="mx-2 w-px bg-zinc-300 dark:bg-zinc-700" />
+        {(['compact', 'comfortable'] as const).map(d => (
+          <button key={d} onClick={() => setDensity(d)} className={`rounded-md px-3 py-1 text-xs ${density === d ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'border border-zinc-300 dark:border-zinc-700'}`}>{d}</button>
+        ))}
       </div>
-      {/* A new key remounts: theme and vars are config, read once. */}
-      <ThemedEditor key={theme + mode} vars={THEMES[theme]} mode={mode} />
+      {/* No key needed: theme, vars and density are live options. */}
+      <ThemedEditor vars={THEMES[theme]} mode={mode} density={density} />
     </>
   )
 }
-function ThemedEditor ({ vars, mode }: { vars: Record<string, string>; mode: 'inherit' | 'light' | 'dark' }) {
+function ThemedEditor ({ vars, mode, density }: { vars: Record<string, string>; mode: 'inherit' | 'light' | 'dark'; density: 'compact' | 'comfortable' }) {
   const editor = useSynTextEditor({
     preset: 'standard',
     theme: mode,
+    density,
     vars,
     value: 'A themed editor. Pick a theme or a mode above — the toolbar, menus and dialogs follow.',
     classNames: { root: 'shadow-xl shadow-zinc-900/5', toolbar: 'px-3', surface: 'min-h-48' },
@@ -171,10 +180,10 @@ function ViewerDemo () {
   const [mode, setMode] = useState<'class' | 'inline'>('class')
   const html = toHTML(WORD_DOC, { mode })
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-3 lg:grid-cols-2">
       <div>
         <Note><code>SynTextView</code> — server-safe React, no hooks. Import from <code>@syntext/react/view</code> in a Server Component.</Note>
-        <div className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900"><SynTextView value={WORD_DOC} /></div>
+        <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"><SynTextView value={WORD_DOC} /></div>
       </div>
       <div>
         <Note>
@@ -209,5 +218,80 @@ function CustomToolbarDemo () {
       </div>
       {editor.render()}
     </>
+  )
+}
+
+function ControlledDemo () {
+  // Every one of these is a plain prop — change it and the same editor follows, content and undo kept.
+  const [preset, setPreset] = useState<PresetName>('full')
+  const [theme, setTheme] = useState<'inherit' | 'light' | 'dark'>('inherit')
+  const [density, setDensity] = useState<'compact' | 'comfortable'>('compact')
+  const [readOnly, setReadOnly] = useState(false)
+  const [toolbar, setToolbar] = useState(true)
+  const [statusbar, setStatusbar] = useState(true)
+  const [menu, setMenu] = useState<'custom' | 'default' | 'list' | 'off'>('custom')
+  const [accent, setAccent] = useState('#2f6bff')
+  const [placeholder, setPlaceholder] = useState('Right-click anywhere…')
+  const [log, setLog] = useState<string[]>([])
+
+  const contextMenu: SynTextEditorConfig['contextMenu'] =
+    menu === 'off' ? false
+    : menu === 'list' ? { items: ['bold', 'italic', 'link', 'separator', 'copy', 'paste', 'delete'] }
+    : menu === 'default' ? true
+    : {
+        items: (ctx, defaults) => {
+          // Add rows of our own, and drop "Select all".
+          const mine: ContextMenuItem[] = ['separator',
+            { id: 'date', label: 'Insert today\'s date', icon: <CalendarDays />, disabled: ctx.readOnly || ctx.target !== 'text',
+              onSelect: ({ editor }) => editor.insertText(new Date().toLocaleDateString()) },
+            { id: 'count', label: `Words: ${ctx.editor.getWords()}`, icon: <Hash />, disabled: true },
+            { id: 'ai', label: 'Ask the assistant', icon: <Sparkles />, items: [
+              { id: 'shorter', label: 'Make shorter', onSelect: () => setLog(l => [`shorter (${ctx.target})`, ...l]) },
+              { id: 'formal', label: 'More formal', onSelect: () => setLog(l => [`formal (${ctx.target})`, ...l]) },
+            ] }]
+          return [...defaults.filter(d => d === 'separator' || d.id !== 'selectAll'), ...mine]
+        },
+      }
+
+  const editor = useSynTextEditor({
+    preset, theme, density, readOnly, statusbar, placeholder, contextMenu,
+    toolbar: toolbar ? undefined : false,
+    vars: { accent },
+    value: WORD_DOC,
+    minHeight: 240,
+    maxHeight: 520,
+    onError: (e) => setLog(l => [`error: ${e.message}`, ...l]),
+  })
+  useEffect(() => editor.on('contextmenu', ctx => setLog(l => [`menu on ${ctx.target}${ctx.index !== null ? ` #${ctx.index}` : ''}`, ...l].slice(0, 8))), [editor])
+
+  const seg = (on: boolean) => `rounded px-2 py-0.5 text-xs ${on ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'border border-zinc-300 dark:border-zinc-700'}`
+  const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div className="flex flex-wrap items-center gap-1"><span className="w-24 text-xs text-zinc-500">{label}</span>{children}</div>
+  )
+  return (
+    <div className="grid gap-3 lg:grid-cols-[260px_1fr]">
+      <aside className="flex flex-col gap-2 rounded-lg border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <Row label="preset">{(['full', 'standard', 'basic', 'minimal'] as const).map(p => <button key={p} className={seg(preset === p)} onClick={() => setPreset(p)}>{p}</button>)}</Row>
+        <Row label="theme">{(['inherit', 'light', 'dark'] as const).map(t => <button key={t} className={seg(theme === t)} onClick={() => setTheme(t)}>{t}</button>)}</Row>
+        <Row label="density">{(['compact', 'comfortable'] as const).map(d => <button key={d} className={seg(density === d)} onClick={() => setDensity(d)}>{d}</button>)}</Row>
+        <Row label="right-click">{(['custom', 'default', 'list', 'off'] as const).map(m => <button key={m} className={seg(menu === m)} onClick={() => setMenu(m)}>{m}</button>)}</Row>
+        <Row label="toggles">
+          <button className={seg(readOnly)} onClick={() => setReadOnly(v => !v)}>readOnly</button>
+          <button className={seg(toolbar)} onClick={() => setToolbar(v => !v)}>toolbar</button>
+          <button className={seg(statusbar)} onClick={() => setStatusbar(v => !v)}>statusbar</button>
+        </Row>
+        <Row label="accent"><input type="color" value={accent} onChange={e => setAccent(e.target.value)} /></Row>
+        <Row label="placeholder"><input className="w-full rounded border border-zinc-300 px-2 py-0.5 text-xs dark:border-zinc-700 dark:bg-zinc-950" value={placeholder} onChange={e => setPlaceholder(e.target.value)} /></Row>
+        <button className="rounded border border-zinc-300 px-2 py-1 text-xs dark:border-zinc-700" onClick={() => editor.setValue(null)}>Clear (to see the placeholder)</button>
+        <div className="mt-1 border-t border-zinc-200 pt-2 text-xs dark:border-zinc-800">
+          <div className="mb-1 text-zinc-500">events</div>
+          {log.map((l, i) => <div key={i} className="font-mono text-[11px]">{l}</div>)}
+        </div>
+      </aside>
+      <div>
+        <Note>One editor, every option a prop. Right-click text, a link, the image, a table cell — or press the Menu key / Shift+F10. Shift + right-click gives the browser's menu.</Note>
+        {editor.render()}
+      </div>
+    </div>
   )
 }

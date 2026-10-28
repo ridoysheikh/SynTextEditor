@@ -8,6 +8,8 @@ import { useEditorValue } from "./hooks";
 import { SynTextEditor } from "./SynTextEditor";
 import { FindBar, LinkDialog, MediaDetailsDialog, PreviewDialog, StatusBar } from "./UI/dialogs";
 import { FloatBar } from "./UI/FloatBar";
+import { ContextMenu } from "./UI/ContextMenu";
+import "./contextMenu";
 import { MediaGallery } from "./UI/media/MediaGallery";
 import { cx, LayerContext, TooltipHost } from "./UI/primitives";
 import { Toolbar } from "./UI/toolbar/Toolbar";
@@ -41,7 +43,7 @@ export function EditorView({ editor, className, style }: { editor: SynTextEditor
 
   const statusbar = c.statusbar ?? PRESETS[c.preset ?? "full"].statusbar;
   const rootRef = useRef<HTMLDivElement>(null);
-  const layer = { className: editor.themeClass, style: editor.varStyle, anchor: rootRef };
+  const layer = { className: cx(editor.themeClass, c.classNames?.layer), style: { ...editor.varStyle, ...c.styles?.layer }, anchor: rootRef };
   const modal = ui.modal;
 
   return (
@@ -60,6 +62,12 @@ export function EditorView({ editor, className, style }: { editor: SynTextEditor
               if (!mod || e.altKey) return;
               if (e.code === "KeyK" && !e.shiftKey && editor.schema.has("link") && !readOnly && surface.current?.contains(e.target as Node)) { e.preventDefault(); editor.openLink(); }
               if (e.code === "KeyF" && !e.shiftKey) { e.preventDefault(); editor.toggleFind(true); }
+            }}
+            onKeyDownCapture={(e) => {
+              // The keyboard's Menu key, or Shift+F10: the context menu at the caret.
+              if ((e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) && surface.current?.contains(e.target as Node)) {
+                if (editor.openContextMenu()) e.preventDefault();
+              }
             }}
           >
             {editor.toolbar && (
@@ -80,6 +88,16 @@ export function EditorView({ editor, className, style }: { editor: SynTextEditor
                 suppressContentEditableWarning
                 className={cx("se-surface se-content", c.classNames?.surface, c.classNames?.content)}
                 style={{ ...c.styles?.surface, ...c.styles?.content }}
+                onContextMenu={(e) => {
+                  const cfg = c.contextMenu;
+                  if (cfg === false) return;
+                  if (e.shiftKey && (typeof cfg !== "object" || cfg.nativeWithShift !== false)) return;   // the browser's own
+                  if (e.nativeEvent.button === 0 && e.nativeEvent.detail === 0 && e.clientX === 0 && e.clientY === 0) {
+                    if (editor.openContextMenu()) e.preventDefault();                                     // from the keyboard
+                    return;
+                  }
+                  if (editor.openContextMenu(e.clientX, e.clientY, e.target as Element)) e.preventDefault();
+                }}
               />
               <FloatBar editor={editor} surface={surfaceEl} scroller={scroller} />
             </div>
@@ -88,6 +106,7 @@ export function EditorView({ editor, className, style }: { editor: SynTextEditor
             {modal?.kind === "link" && <LinkDialog editor={editor} onClose={() => editor.closeModal()} />}
             {modal?.kind === "media" && <MediaDetailsDialog editor={editor} index={modal.index} onClose={() => editor.closeModal()} />}
             {modal?.kind === "preview" && <PreviewDialog editor={editor} onClose={() => editor.closeModal()} />}
+            <ContextMenu editor={editor} />
           </div>
         )}
       </TooltipHost>
