@@ -8,6 +8,18 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+### Added
+
+- **Sheets** — `dialogs: "sheet"` (or per dialog: `{ gallery: "sheet" }`) opens the dialogs as a panel from the right
+  edge instead of centred. `--se-sheet-top` / `--se-sheet-width` place it. `Modal` gets `variant` and `kind` props.
+  `editor.dialogVariant(kind)` reports the choice.
+- **Shape and dialog chrome variables** — a variable per corner (`--se-radius-box`, `-menu`, `-dialog`, `-sheet`,
+  `-btn`, `-tool`, `-field`, `-tip`) and for the dialog's border, shadow, backdrop blur, header / body / footer
+  background, padding and title, plus `--se-popover-border` / `--se-popover-shadow`. All fall back to the old values,
+  so nothing changes until you set one. See `docs/theming.md`.
+- **Compact toolbar** — a `spacer` tool pushes the groups after it to the right edge, and a `status` tool puts the
+  word count and upload progress in the toolbar (`StatusTool`), so an editor can drop its status bar.
+
 ## [0.3.1] - 2026-10-29
 
 ### Fixed

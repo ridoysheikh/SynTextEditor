@@ -153,6 +153,11 @@ export interface SynTextEditorConfig {
   sizes?: number[];
   /** Undo steps kept (default 300). */
   history?: number;
+  /**
+   * How dialogs are shown: `"dialog"` (default, centred) or `"sheet"` (a panel from the right edge — its top
+   * offset is `--se-sheet-top`). An object chooses per dialog: `{ default: "dialog", gallery: "sheet" }`.
+   */
+  dialogs?: DialogVariant | Partial<Record<"default" | DialogKind, DialogVariant>>;
 }
 
 /** Where the caret is — see `SynTextEditor.getCaretContext()`. */
@@ -168,6 +173,11 @@ export interface CaretContext {
   /** The editor's scrolling box (`.se-scroll`; positioned). Null when it can't be found. */
   container: HTMLElement | null;
 }
+
+/** Which dialog is open — see `SynTextEditorConfig.dialogs`. */
+export type DialogKind = "gallery" | "link" | "media" | "preview";
+/** How a dialog is shown: centred over the page, or as a panel sliding in from the right edge. */
+export type DialogVariant = "dialog" | "sheet";
 
 export type EventName = "change" | "state" | "ui" | "focus" | "blur" | "ready" | "error" | "contextmenu";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -196,7 +206,7 @@ const isAdapter = (s: StorageAdapter | RestStorageOptions): s is StorageAdapter 
 export const LIVE_OPTIONS = [
   "preset", "formats", "toolbar", "statusbar", "stickyToolbar", "toolbarWrap", "placeholder", "maxLength", "minHeight",
   "maxHeight", "variant", "spellCheck", "ariaLabel", "theme", "density", "vars", "classNames", "styles", "colors",
-  "highlights", "fonts", "sizes", "storage", "upload", "contextMenu", "components",
+  "highlights", "fonts", "sizes", "storage", "upload", "contextMenu", "components", "dialogs",
 ] as const satisfies readonly (keyof SynTextEditorConfig)[];
 export type LiveOptions = Pick<SynTextEditorConfig, (typeof LIVE_OPTIONS)[number]>;
 
@@ -480,6 +490,11 @@ export class SynTextEditor {
   toggleFullscreen(on = !this.ui.fullscreen) { this.setUI({ fullscreen: on }); requestAnimationFrame(() => this.engine?.focus()); }
 
   /** Whether the right-click menu is on. */
+  /** How the dialog `kind` is shown (see the `dialogs` option). */
+  dialogVariant(kind: DialogKind): DialogVariant {
+    const d = this.config.dialogs;
+    return (typeof d === "string" ? d : d?.[kind] ?? d?.default) ?? "dialog";
+  }
   get contextMenuEnabled() { return this.config.contextMenu !== false; }
   /**
    * Open the right-click menu at a point (viewport px) — by default at the caret. With `target`, the element that

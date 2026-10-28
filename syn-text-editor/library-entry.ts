@@ -9,7 +9,7 @@ import "./styles/globals.lib.css";
 export { SynTextEditor, createSynTextEditor, blockFromAsset, LIVE_OPTIONS } from "./SynTextEditor";
 export type {
   SynTextEditorConfig, UploadConfig, ThemeMode, ThemeVars, Slot, EventName, Modal as EditorModal, Upload, UIState, LiveOptions,
-  ContextMenuConfig, ContextMenuContext, ContextMenuItem, ContextTarget, OpenContextMenu, CaretContext,
+  ContextMenuConfig, ContextMenuContext, ContextMenuItem, ContextTarget, OpenContextMenu, CaretContext, DialogKind, DialogVariant,
 } from "./SynTextEditor";
 
 // ── Right-click menu ──────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ export { Toolbar, toolAllowed } from "./UI/toolbar/Toolbar";
 export {
   Tool, UndoTool, RedoTool, BlockTool, BlockToggleTool, FontTool, SizeTool, MarkTool, ScriptTool, ColorTool, AlignTool,
   ListTool, IndentTool, LinkTool, MediaTool, TableTool, RuleTool, PainterTool, ClearTool, FindTool, PreviewTool, FullscreenTool,
-  ColorMenu, useToolState, useUI, keys,
+  StatusTool, ColorMenu, useToolState, useUI, keys,
 } from "./UI/toolbar/tools";
 export {
   ToolButton, PopoverButton, Popover, MenuItem, MenuSeparator, MenuLabel, Modal, Button, Field, Slider, Tooltip, Divider,

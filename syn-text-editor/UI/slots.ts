@@ -49,6 +49,10 @@ export interface ModalProps {
   width?: number;
   label?: string;
   headExtra?: ReactNode;
+  /** "dialog" (centred, default) or "sheet" (a panel from the right edge). Chosen by the `dialogs` option. */
+  variant?: "dialog" | "sheet";
+  /** Which dialog this is — "gallery", "link", "media" or "preview" — for a replacement `Modal`. */
+  kind?: "gallery" | "link" | "media" | "preview";
 }
 export interface MenuItemProps {
   children: ReactNode;

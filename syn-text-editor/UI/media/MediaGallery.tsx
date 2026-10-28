@@ -124,7 +124,7 @@ function MediaGalleryBase({ editor, filter, replace, thumbnailFor, onClose: clos
 
   const title = thumb ? "Choose a thumbnail" : replacing ? "Replace file" : lockedKind ? `Insert ${lockedKind === "file" ? "file" : lockedKind}` : "Media library";
   return (
-    <Modal title={title} onClose={onClose} width={860}
+    <Modal title={title} onClose={onClose} width={860} kind="gallery" variant={editor.dialogVariant("gallery")}
       footer={
         <>
           {tab === "library" && <span className="se-hint">{picked.length ? `${picked.length} selected` : storage ? "Click to select · Ctrl/⌘-click for several" : ""}</span>}

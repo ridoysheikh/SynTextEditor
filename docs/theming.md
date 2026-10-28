@@ -291,6 +291,30 @@ Defined in `layout.css`. `compact` is the default; `comfortable` applies with `d
 | `--se-ctx-max-h` | `min(560px, 100vh - 8px)` | tallest the right-click menu gets |
 | `--se-ctx-max-w` | `280px` | widest the right-click menu gets |
 
+### Shape and dialog chrome
+
+Every corner and the dialog's frame has its own variable, each falling back to `--se-radius` / `--se-radius-sm` /
+`--se-border-2` / `--se-shadow` when unset — set only the ones your design differs on.
+
+| Variable | Controls | Falls back to |
+|---|---|---|
+| `--se-radius-box` | the editor's outer frame and toolbar | `--se-radius` |
+| `--se-radius-menu` | menus, pickers, the floating image bar | `--se-radius` |
+| `--se-radius-dialog` | dialogs | `--se-radius` + 4px |
+| `--se-radius-sheet` | a dialog shown as a sheet | `0` |
+| `--se-radius-btn` | buttons in dialogs | `--se-radius-sm` |
+| `--se-radius-tool` | toolbar buttons and menu rows | `--se-radius-sm` |
+| `--se-radius-field` | inputs | `--se-radius-sm` |
+| `--se-radius-tip` | tooltips | `5px` |
+| `--se-dialog-border` · `--se-dialog-shadow` | the dialog's border and shadow | `--se-border-2` · `--se-shadow` |
+| `--se-popover-border` · `--se-popover-shadow` | menus and pickers | `--se-border-2` · `--se-shadow` |
+| `--se-backdrop-blur` | blur behind a dialog (length, e.g. `2px`) | `0px` |
+| `--se-modal-head-bg` · `--se-modal-foot-bg` | dialog header / footer background | transparent |
+| `--se-modal-border` | the lines under the header and over the footer | `--se-border` |
+| `--se-modal-head-pad` · `--se-modal-body-pad` · `--se-modal-foot-pad` | dialog paddings (full `padding` values) | from `--se-modal-pad` |
+| `--se-modal-title-size` · `--se-modal-title-weight` | dialog title | `14px` · `600` |
+| `--se-sheet-top` · `--se-sheet-width` | where a sheet starts (below an app header) and how wide it is | `0px` · fills up to the dialog's own max width |
+
 ### Overflow
 
 Every floating panel — toolbar menus, the colour picker, the right-click menu and its submenus — opens on the side

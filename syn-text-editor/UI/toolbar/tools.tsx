@@ -347,6 +347,31 @@ export function FullscreenTool({ editor }: ToolProps) {
   return <ToolButton label={ui.fullscreen ? "Exit full screen" : "Full screen"} active={ui.fullscreen} onClick={() => editor.toggleFullscreen()}>{ui.fullscreen ? <Shrink /> : <Expand />}</ToolButton>;
 }
 
+/** A compact count (words, with the characters in its tooltip) and upload progress — the status bar, as a toolbar tool. */
+export function StatusTool({ editor }: ToolProps) {
+  const { state } = useToolState(editor);
+  const ui = useUI(editor);
+  const max = editor.config.maxLength;
+  const len = state?.length ?? editor.getLength();
+  const words = state?.words ?? editor.getWords();
+  const busy = ui.uploads.filter((u) => !u.error);
+  const failed = ui.uploads.filter((u) => u.error);
+  const progress = busy.length ? busy.reduce((n, u) => n + u.progress, 0) / busy.length : 0;
+  return (
+    <span className="se-status" aria-live="polite">
+      {failed.map((u) => <span key={u.id} className="se-error" title={`${u.name}: ${u.error}`}>Upload failed</span>)}
+      {busy.length > 0 && (
+        <span className="se-progress" title={busy.length > 1 ? `${busy.length} files` : busy[0].name}>
+          <span className="se-progress-track"><span className="se-progress-fill" style={{ display: "block", width: `${Math.round(progress * 100)}%` }} /></span>
+        </span>
+      )}
+      <span title={`${len.toLocaleString()}${max ? ` / ${max.toLocaleString()}` : ""} characters`} data-over={max && len > max ? "" : undefined}>
+        {max ? `${len.toLocaleString()} / ${max.toLocaleString()}` : `${words.toLocaleString()} ${words === 1 ? "word" : "words"}`}
+      </span>
+    </span>
+  );
+}
+
 /** One tool by id — what `Toolbar` lays out. */
 export function Tool({ editor, id }: ToolProps & { id: string }): ReactNode {
   const custom = useContext(ComponentsContext).tools?.[id];
@@ -356,7 +381,7 @@ export function Tool({ editor, id }: ToolProps & { id: string }): ReactNode {
 
 const BUILT_IN = new Set(["undo", "redo", "block", "font", "size", "bold", "italic", "underline", "strike", "code", "sub", "sup",
   "color", "highlight", "align", "bullet", "ordered", "check", "indent", "outdent", "quote", "codeblock", "link", "image",
-  "video", "file", "media", "table", "hr", "painter", "clear", "find", "preview", "fullscreen"]);
+  "video", "file", "media", "table", "hr", "painter", "clear", "find", "preview", "fullscreen", "status"]);
 const builtIns = new Map<string, (p: ToolProps) => ReactNode>();
 /** The library's tool `id` as a component — the `Default` a replacement tool gets. */
 function builtIn(id: string) {
@@ -390,6 +415,7 @@ function BuiltInTool({ editor, id }: ToolProps & { id: string }): ReactNode {
     case "find": return <FindTool editor={editor} />;
     case "preview": return <PreviewTool editor={editor} />;
     case "fullscreen": return <FullscreenTool editor={editor} />;
+    case "status": return <StatusTool editor={editor} />;
     default: return null;
   }
 }

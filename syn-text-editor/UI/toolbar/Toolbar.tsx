@@ -29,7 +29,7 @@ function ToolbarBase({ editor, layout, className, style, sticky, wrap }: {
   return (
     <div role="toolbar" aria-label="Formatting" className={cx("se-toolbar", className)} style={style}
       data-sticky={sticky ? "" : undefined} data-wrap={wrap ?? "wrap"}>
-      {groups.map((g, i) => (
+      {groups.map((g, i) => g.length === 1 && g[0] === "spacer" ? <div key={i} className="se-tb-spacer" aria-hidden /> : (
         <div key={i} className="se-tb-group">
           {g.map((id) => <Fragment key={id}><Tool editor={editor} id={id} /></Fragment>)}
         </div>

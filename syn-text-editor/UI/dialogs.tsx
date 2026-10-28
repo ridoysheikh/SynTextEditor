@@ -31,7 +31,7 @@ function LinkDialogBase({ editor, onClose }: { editor: SynTextEditor; onClose: (
     requestAnimationFrame(() => editor.setLink(safe, bare ? text : undefined));
   };
   return (
-    <Modal title={state?.link ? "Edit link" : "Add link"} onClose={onClose} width={440}
+    <Modal title={state?.link ? "Edit link" : "Add link"} onClose={onClose} width={440} kind="link" variant={editor.dialogVariant("link")}
       footer={
         <>
           {state?.link && <Button tone="danger" onClick={() => { onClose(); requestAnimationFrame(() => editor.setLink(undefined)); }}><Unlink />Remove link</Button>}
@@ -79,7 +79,7 @@ function MediaDetailsDialogBase({ editor, index, onClose }: { editor: SynTextEdi
   // The library replaces this dialog for a moment: keep what was edited, and it comes back here after.
   const library = () => { editor.engine?.updateAtom(patch(), index); editor.openThumbnailLibrary(index); };
   return (
-    <Modal title={block.type === "file" ? "File details" : block.type === "video" ? "Video details" : "Image details"} onClose={onClose} width={480}
+    <Modal title={block.type === "file" ? "File details" : block.type === "video" ? "Video details" : "Image details"} onClose={onClose} width={480} kind="media" variant={editor.dialogVariant("media")}
       footer={<><span className="se-tb-spacer" /><Button onClick={onClose}>Cancel</Button><Button tone="primary" onClick={save}>Save</Button></>}>
       <form className="se-modal-body se-stack" onSubmit={(e) => { e.preventDefault(); save(); }}>
         {block.type === "image" && (
@@ -175,7 +175,7 @@ function PreviewDialogBase({ editor, onClose }: { editor: SynTextEditor; onClose
   };
   const dark = editor.config.theme === "dark" ? "dark" : editor.config.theme === "light" ? "light" : "inherit";
   return (
-    <Modal title="Preview" onClose={onClose} width={900}>
+    <Modal title="Preview" onClose={onClose} width={900} kind="preview" variant={editor.dialogVariant("preview")}>
       <div className="se-tabs" role="tablist">
         {(["preview", "html", "json"] as const).map((t) => (
           <button key={t} type="button" role="tab" className="se-tab" aria-selected={tab === t} onClick={() => setTab(t)}>{t === "preview" ? "Preview" : t.toUpperCase()}</button>

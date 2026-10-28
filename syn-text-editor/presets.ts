@@ -11,7 +11,11 @@ export type ToolId =
   | "color" | "highlight"
   | "align" | "bullet" | "ordered" | "check" | "outdent" | "indent"
   | "quote" | "codeblock" | "link" | "image" | "video" | "file" | "media" | "table" | "hr"
-  | "painter" | "clear" | "find" | "preview" | "fullscreen";
+  | "painter" | "clear" | "find" | "preview" | "fullscreen"
+  /** A flexible gap: tools in the groups after it sit at the right edge. */
+  | "spacer"
+  /** Compact words / characters count and upload progress, for a toolbar without a status bar. */
+  | "status";
 /** Groups of tools; a divider between groups. Ids beyond the built-ins name your own tools (`components.tools`). */
 export type ToolbarLayout = (ToolId | (string & {}))[][];
 

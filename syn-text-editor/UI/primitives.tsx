@@ -262,7 +262,7 @@ export const MenuSeparator = overridable("MenuSeparator", function MenuSeparator
 export const MenuLabel = overridable("MenuLabel", function MenuLabelBase({ children }: MenuLabelProps) { return <div className="se-menu-label">{children}</div>; });
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
-function ModalBase({ title, onClose, children, footer, width = 520, label, headExtra }: ModalProps) {
+function ModalBase({ title, onClose, children, footer, width = 520, label, headExtra, variant = "dialog", kind }: ModalProps) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
@@ -287,8 +287,8 @@ function ModalBase({ title, onClose, children, footer, width = 520, label, headE
   }, [onClose]);
   return (
     <Layer>
-      <div className="se-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-        <div ref={box} role="dialog" aria-modal="true" aria-label={label ?? (typeof title === "string" ? title : undefined)} className="se-modal" style={{ maxWidth: width }}>
+      <div className="se-backdrop" data-variant={variant} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div ref={box} role="dialog" aria-modal="true" aria-label={label ?? (typeof title === "string" ? title : undefined)} className="se-modal" data-variant={variant} data-kind={kind} style={{ maxWidth: width }}>
           <div className="se-modal-head">
             <h2 className="se-modal-title">{title}</h2>
             {headExtra}

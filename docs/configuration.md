@@ -101,6 +101,12 @@ function Note({ dark, compact, locked }: Props) {
 | `onBlur` | `(editor) => void` | Focus left the editor. |
 | `onError` | `(error: Error, editor) => void` | Rejected files, failed uploads, storage errors, a blocked clipboard read. |
 
+## Dialogs
+
+| Option | Type | Default | |
+|---|---|---|---|
+| `dialogs` | `"dialog" \| "sheet" \| { default?, gallery?, link?, media?, preview? }` | `"dialog"` | How dialogs open: centred, or as a **sheet** — a panel from the right edge (offset by `--se-sheet-top`, sized by `--se-sheet-width`). The object form chooses per dialog: `{ gallery: "sheet" }` keeps the small ones centred. Live. |
+
 ## Components
 
 | Option | Type | Default | |
