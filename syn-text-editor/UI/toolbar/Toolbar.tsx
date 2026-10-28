@@ -26,14 +26,21 @@ function ToolbarBase({ editor, layout, className, style, sticky, wrap }: {
   wrap?: "wrap" | "scroll";
 }) {
   const groups = layout.map((g) => g.filter((id) => toolAllowed(editor, id))).filter((g) => g.length);
+  // A lone "spacer" group splits the bar: what follows is one block pinned to the right, which stays on the
+  // right when the bar wraps onto a second row.
+  const split = groups.findIndex((g) => g.length === 1 && g[0] === "spacer");
+  const main = split < 0 ? groups : groups.slice(0, split);
+  const end = split < 0 ? [] : groups.slice(split + 1);
+  const draw = (gs: string[][]) => gs.map((g, i) => (
+    <div key={i} className="se-tb-group">
+      {g.map((id) => <Fragment key={id}><Tool editor={editor} id={id} /></Fragment>)}
+    </div>
+  ));
   return (
     <div role="toolbar" aria-label="Formatting" className={cx("se-toolbar", className)} style={style}
       data-sticky={sticky ? "" : undefined} data-wrap={wrap ?? "wrap"}>
-      {groups.map((g, i) => g.length === 1 && g[0] === "spacer" ? <div key={i} className="se-tb-spacer" aria-hidden /> : (
-        <div key={i} className="se-tb-group">
-          {g.map((id) => <Fragment key={id}><Tool editor={editor} id={id} /></Fragment>)}
-        </div>
-      ))}
+      {draw(main)}
+      {end.length > 0 && <div className="se-tb-end">{draw(end)}</div>}
     </div>
   );
 }

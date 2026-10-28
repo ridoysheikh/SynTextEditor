@@ -84,7 +84,7 @@ layout to a restricted editor safely.
 | `clear` | clear formatting | — |
 | `find` | find & replace bar | — |
 | `status` | compact word count (characters in its tooltip, `n / max` with `maxLength`) and upload progress — the status bar as a toolbar tool | — |
-| `spacer` | a flexible gap: the groups after it sit at the right edge. Put it alone in its group: `["spacer"]` | — |
+| `spacer` | a flexible gap: the groups after it become one block pinned to the right edge (and stay there when the bar wraps). Put it alone in its group: `["spacer"]` | — |
 | `preview` | preview dialog (rendered, HTML, JSON) | — |
 | `fullscreen` | full screen | — |
 

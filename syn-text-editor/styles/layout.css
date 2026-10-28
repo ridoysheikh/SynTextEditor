@@ -125,7 +125,7 @@
 .se-tb-group { display: flex; align-items: center; gap: var(--se-gap); flex-shrink: 0; }
 .se-tb-group + .se-tb-group { padding-left: var(--se-toolbar-gap); border-left: 1px solid var(--se-border); }
 .se-tb-spacer { flex: 1; }
-.se-tb-spacer + .se-tb-group { padding-left: 0; border-left: none; }
+.se-tb-end { display: flex; align-items: center; gap: var(--se-toolbar-gap); margin-left: auto; flex-shrink: 0; }
 .se-status { display: inline-flex; align-items: center; gap: 8px; padding: 0 6px; font-size: 11px; color: var(--se-text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .se-status [data-over] { color: var(--se-danger); font-weight: 600; }
 .se-status .se-error { font-size: 11px; }

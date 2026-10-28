@@ -8,6 +8,10 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+### Fixed
+
+- The groups after a `spacer` tool stay pinned to the right edge when the toolbar wraps onto a second row (they used to drop to the left).
+
 ## [0.4.0] - 2026-10-29
 
 ### Added
