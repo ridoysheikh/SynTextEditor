@@ -1,0 +1,20 @@
+/* ─────────────────────────────────────────────
+   SynTextEditor — Tailwind v4 bridge
+   @import "@syntext/react/tailwind" after
+   "tailwindcss" to use the editor's tokens as
+   utilities in your own UI (bg-se-surface,
+   text-se-accent, border-se-border…). They read
+   the same --se-* variables, so they follow the
+   editor's theme and your overrides.
+────────────────────────────────────────────── */
+@theme inline {
+  --color-se-bg:        var(--se-bg);
+  --color-se-surface:   var(--se-surface);
+  --color-se-surface-2: var(--se-surface-2);
+  --color-se-border:    var(--se-border);
+  --color-se-text:      var(--se-text);
+  --color-se-text-2:    var(--se-text-2);
+  --color-se-muted:     var(--se-muted);
+  --color-se-accent:    var(--se-accent);
+  --color-se-danger:    var(--se-danger);
+}

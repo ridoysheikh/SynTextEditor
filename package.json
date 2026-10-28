@@ -1,0 +1,58 @@
+{
+  "name": "@syntext/react",
+  "version": "0.1.0",
+  "description": "Lightweight rich text editor for React and Next.js — model-first engine, themeable UI, media gallery over your own storage",
+  "license": "UNLICENSED",
+  "type": "module",
+  "keywords": ["react", "nextjs", "rich-text", "editor", "wysiwyg", "contenteditable", "tailwindcss"],
+  "exports": {
+    ".": {
+      "types": "./dist-lib/library-entry.d.ts",
+      "import": "./dist-lib/index.mjs",
+      "require": "./dist-lib/index.cjs"
+    },
+    "./view": {
+      "types": "./dist-lib/view-entry.d.ts",
+      "import": "./dist-lib/view.mjs",
+      "require": "./dist-lib/view.cjs"
+    },
+    "./layout": "./dist-lib/index.css",
+    "./theme": "./dist-lib/theme.css",
+    "./tailwind": "./dist-lib/tailwind.css"
+  },
+  "sideEffects": ["*.css"],
+  "files": ["dist-lib"],
+  "main": "./dist-lib/index.cjs",
+  "module": "./dist-lib/index.mjs",
+  "types": "./dist-lib/library-entry.d.ts",
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build:app": "vite build",
+    "build:lib": "vite build --config vite.lib.config.ts && node scripts/verify-bundle.mjs",
+    "build": "pnpm typecheck && pnpm build:lib",
+    "preview": "vite preview"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "dependencies": {
+    "lucide-react": "^0.469.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vite-plugin-dts": "^5.0.0",
+    "vitest": "^4.1.11"
+  }
+}

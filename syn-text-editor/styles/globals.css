@@ -1,0 +1,11 @@
+/* The dev page's stylesheet: the library's two sheets plus Tailwind for the demo app itself. */
+@import './layout.css';
+@import './theme.css';
+@import 'tailwindcss';
+@import './tailwind.css';
+
+/* The demo switches dark mode with a class, as most Next.js apps do. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source './../../index.html';
+@source './../../test-preview/**/*.{ts,tsx}';

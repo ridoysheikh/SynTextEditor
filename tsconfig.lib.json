@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "paths": { "@syn/*": ["./syn-text-editor/*"] }
+  },
+  "include": ["syn-text-editor"],
+  "exclude": ["syn-text-editor/__tests__"]
+}
