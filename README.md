@@ -18,6 +18,9 @@ the viewer draws it as React elements, and `toHTML` writes it out when you need 
   follows, content and undo kept.
 - **A right-click menu you control** — context-aware rows for text, links, images, files and table cells; pick
   rows by id, add your own with submenus, or turn it off.
+- **Your own components, anywhere** — the UI is drawn by the library (no browser widgets), and every part is a
+  slot: pass `components` to wrap the default or swap in your own — buttons, tooltips, menus, dialogs, sliders, the
+  colour picker, the toolbar, single tools — or add new tools. Live.
 - **Custom fonts** — push web fonts onto the font menu (`fonts: { add: [...] }`) with a stylesheet or font-file
   `src`; the editor loads them, and the viewer loads the ones a document uses.
 - **Lightweight** — ~40 KB gzipped for the full editor UI, ~9 KB for the viewer, ~6 KB CSS. Peer deps: React 18+.

@@ -10,7 +10,7 @@ import { safeSrc } from "../../core/model";
 import { kindOf, type Asset, type AssetKind } from "../../core/storage";
 import { formatBytes } from "../../core/styles";
 import { blockFromAsset, type SynTextEditor } from "../../SynTextEditor";
-import { Button, Field, Modal } from "../primitives";
+import { Button, Field, Modal, overridable } from "../primitives";
 import { useUI } from "../toolbar/tools";
 
 type Tab = "library" | "upload" | "link";
@@ -18,7 +18,7 @@ const PAGE = 24;
 const KIND_LABEL: Record<AssetKind, string> = { image: "Images", video: "Videos", file: "Files" };
 const KIND_ICON = { image: ImageIcon, video: Film, file: File };
 
-export function MediaGallery({ editor, filter, replace, onClose }: {
+function MediaGalleryBase({ editor, filter, replace, onClose }: {
   editor: SynTextEditor;
   /** Only this kind (set when opened from the image / video / file tool). */
   filter?: AssetKind;
@@ -300,4 +300,4 @@ function LinkPane({ editor, kind, onInsert }: { editor: SynTextEditor; kind?: As
     </form>
   );
 }
-
+export const MediaGallery = overridable("MediaGallery", MediaGalleryBase);

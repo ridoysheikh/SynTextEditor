@@ -148,6 +148,7 @@ editor.once("ready", () => editor.focus());
 | `LIVE_OPTIONS` | the option names `setOptions` and the hook keep live |
 | `defaultContextItems(ctx)`, `resolveContextItems(ctx)`, `tidyContextItems(rows)`, `pasteFromClipboard(editor, plain?)`, `CONTEXT_ITEM_IDS` | the [right-click menu](context-menu.md)'s rows |
 | `<ContextMenu editor />` | the menu itself (mounted by `render()`) |
+| `ComponentsContext`, `overridable(name, C)`, `SLOT_NAMES` | [replaceable parts](components.md); types `SynComponents`, `ComponentsConfig`, `Replacement<P>` and each slot's props |
 
 Tools and primitives: see [Customization](customization.md#your-own-toolbar).
 

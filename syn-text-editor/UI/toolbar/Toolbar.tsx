@@ -7,17 +7,17 @@ import { Fragment, type CSSProperties } from "react";
 import type { Format } from "../../core/model";
 import { TOOL_FORMAT, type ToolbarLayout, type ToolId } from "../../presets";
 import type { SynTextEditor } from "../../SynTextEditor";
-import { cx } from "../primitives";
+import { cx, overridable } from "../primitives";
 import { Tool } from "./tools";
 
 /** Whether the editor allows what a tool makes. */
-export function toolAllowed(editor: SynTextEditor, id: ToolId): boolean {
-  const need = TOOL_FORMAT[id];
+export function toolAllowed(editor: SynTextEditor, id: ToolId | (string & {})): boolean {
+  const need = TOOL_FORMAT[id as ToolId];
   if (!need) return true;
   return (Array.isArray(need) ? need : [need]).some((f: Format) => editor.schema.has(f));
 }
 
-export function Toolbar({ editor, layout, className, style, sticky, wrap }: {
+function ToolbarBase({ editor, layout, className, style, sticky, wrap }: {
   editor: SynTextEditor;
   layout: ToolbarLayout;
   className?: string;
@@ -37,3 +37,4 @@ export function Toolbar({ editor, layout, className, style, sticky, wrap }: {
     </div>
   );
 }
+export const Toolbar = overridable("Toolbar", ToolbarBase);

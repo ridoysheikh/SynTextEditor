@@ -4,10 +4,33 @@
 // gets the same look without copying styles. Menus and dialogs are portalled to <body> inside a `.se-layer`
 // carrying the editor's theme class and variables, so they theme with it and escape any overflow.
 
-import { createContext, forwardRef, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createContext, createElement, forwardRef, useContext, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type React from "react";
+import type {
+  ButtonProps, FieldProps, MenuItemProps, MenuLabelProps, ModalProps, PopoverProps, SliderProps, SlotName, SynComponents,
+  ToolButtonProps, TooltipProps,
+} from "./slots";
+
+export type { ToolButtonProps } from "./slots";
+
+// ── Replaceable parts ─────────────────────────────────────────────────────────
+/** The host's replacements (the editor's `components` option), provided by the editor view. */
+export const ComponentsContext = createContext<Partial<SynComponents>>({});
+
+/**
+ * The slot `name`: the host's replacement when there is one (given `Default`), otherwise `Default` itself.
+ * Every part of the UI goes through one of these.
+ */
+export function overridable<P extends object>(name: SlotName, Default: ComponentType<P>): ComponentType<P> {
+  function Slot(props: P) {
+    const C = useContext(ComponentsContext)[name] as ComponentType<P & { Default: ComponentType<P> }> | undefined;
+    return C ? createElement(C, { ...props, Default }) : createElement(Default, props);
+  }
+  Slot.displayName = `se(${name})`;
+  return Slot;
+}
 
 /** useLayoutEffect in the browser, useEffect on a server (where layout effects only warn). */
 export const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -60,24 +83,25 @@ export function TooltipHost({ children }: { children: (show: (t: { text: string;
       {children(show)}
       {tip && (
         <Layer>
-          <div className="se-tip" role="tooltip" style={{ left: Math.max(4, tip.rect.left + tip.rect.width / 2), top: tip.rect.bottom + 6, transform: "translateX(-50%)" }}>
-            {tip.text}{tip.kbd && <kbd>{tip.kbd}</kbd>}
-          </div>
+          <Tooltip {...tip} />
         </Layer>
       )}
     </TipProvider>
   );
 }
 
-// ── Toolbar button ────────────────────────────────────────────────────────────
-export interface ToolButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "title"> {
-  label: string;
-  kbd?: string;
-  active?: boolean;
-  open?: boolean;
-  wide?: boolean;
+function TooltipBase({ text, kbd, rect }: TooltipProps) {
+  return (
+    <div className="se-tip" role="tooltip" style={{ left: Math.max(4, rect.left + rect.width / 2), top: rect.bottom + 6, transform: "translateX(-50%)" }}>
+      {text}{kbd && <kbd>{kbd}</kbd>}
+    </div>
+  );
 }
-export const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(function ToolButton({ label, kbd, active, open, wide, children, className, onMouseEnter, onMouseLeave, ...rest }, ref) {
+/** The tooltip of toolbar buttons. Slot `Tooltip`. */
+export const Tooltip = overridable("Tooltip", TooltipBase);
+
+// ── Toolbar button ────────────────────────────────────────────────────────────
+const ToolButtonBase = forwardRef<HTMLButtonElement, ToolButtonProps>(function ToolButtonBase({ label, kbd, active, open, wide, children, className, onMouseEnter, onMouseLeave, ...rest }, ref) {
   const tip = useContext(TipContext);
   return (
     <button
@@ -97,7 +121,13 @@ export const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(functio
   );
 });
 
-export const Divider = () => <span className="se-sep" aria-hidden />;
+/** A toolbar button with a tooltip. Slot `ToolButton` — a replacement must pass its ref on to the button. */
+export const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(function ToolButton(props, ref) {
+  const C = useContext(ComponentsContext).ToolButton;
+  return C ? createElement(C, { ...props, ref, Default: ToolButtonBase }) : createElement(ToolButtonBase, { ...props, ref });
+});
+
+export const Divider = overridable("Divider", function DividerBase() { return <span className="se-sep" aria-hidden />; });
 
 // ── Popover ───────────────────────────────────────────────────────────────────
 /**
@@ -127,17 +157,7 @@ export function revealRow(panel: HTMLElement | null, sel = '[data-focus], [aria-
  * than the room it has (`--se-popover-max-h` / `--se-popover-max-w` cap it; past that it scrolls). Closes on
  * Escape, on a click outside, and when the editor scrolls away.
  */
-export function Popover({ anchor, open, onClose, children, align = "start", className, style, role = "dialog", label }: {
-  anchor: HTMLElement | null;
-  open: boolean;
-  onClose: () => void;
-  children: ReactNode;
-  align?: "start" | "end" | "center";
-  className?: string;
-  style?: CSSProperties;
-  role?: string;
-  label?: string;
-}) {
+function PopoverBase({ anchor, open, onClose, children, align = "start", className, style, role = "dialog", label }: PopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number; room: number } | null>(null);
   const first = useRef(true);
@@ -197,6 +217,8 @@ export function Popover({ anchor, open, onClose, children, align = "start", clas
   );
 }
 
+export const Popover = overridable("Popover", PopoverBase);
+
 /** A toolbar button that opens a popover — the state, the anchor and the wiring in one. */
 export function PopoverButton({ label, kbd, icon, active, disabled, wide, children, align, panelClassName, buttonClassName, style }: {
   label: string;
@@ -227,16 +249,7 @@ export function PopoverButton({ label, kbd, icon, active, disabled, wide, childr
   );
 }
 
-export function MenuItem({ children, icon, checked, danger, kbd, onSelect, disabled, style }: {
-  children: ReactNode;
-  icon?: ReactNode;
-  checked?: boolean;
-  danger?: boolean;
-  kbd?: string;
-  disabled?: boolean;
-  style?: CSSProperties;
-  onSelect: () => void;
-}) {
+function MenuItemBase({ children, icon, checked, danger, kbd, onSelect, disabled, style }: MenuItemProps) {
   return (
     <button type="button" role="menuitemradio" aria-checked={checked} data-danger={danger ? "" : undefined} disabled={disabled}
       className="se-menu-item" style={style} onMouseDown={keep} onClick={onSelect}>
@@ -244,19 +257,12 @@ export function MenuItem({ children, icon, checked, danger, kbd, onSelect, disab
     </button>
   );
 }
-export const MenuSeparator = () => <div className="se-menu-sep" role="separator" />;
-export const MenuLabel = ({ children }: { children: ReactNode }) => <div className="se-menu-label">{children}</div>;
+export const MenuItem = overridable("MenuItem", MenuItemBase);
+export const MenuSeparator = overridable("MenuSeparator", function MenuSeparatorBase() { return <div className="se-menu-sep" role="separator" />; });
+export const MenuLabel = overridable("MenuLabel", function MenuLabelBase({ children }: MenuLabelProps) { return <div className="se-menu-label">{children}</div>; });
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
-export function Modal({ title, onClose, children, footer, width = 520, label, headExtra }: {
-  title: ReactNode;
-  onClose: () => void;
-  children: ReactNode;
-  footer?: ReactNode;
-  width?: number;
-  label?: string;
-  headExtra?: ReactNode;
-}) {
+function ModalBase({ title, onClose, children, footer, width = 520, label, headExtra }: ModalProps) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
@@ -296,31 +302,23 @@ export function Modal({ title, onClose, children, footer, width = 520, label, he
   );
 }
 
-export function Button({ tone, size, children, className, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "primary" | "danger" | "ghost"; size?: "sm" }) {
-  return <button type="button" data-tone={tone} data-size={size} className={cx("se-button", className)} {...rest}>{children}</button>;
-}
+/** A dialog. Slot `Modal` — every dialog (link, media details, gallery, preview) is drawn in it. */
+export const Modal = overridable("Modal", ModalBase);
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export const Button = overridable("Button", function ButtonBase({ tone, size, children, className, ...rest }: ButtonProps) {
+  return <button type="button" data-tone={tone} data-size={size} className={cx("se-button", className)} {...rest}>{children}</button>;
+});
+
+export const Field = overridable("Field", function FieldBase({ label, children }: FieldProps) {
   return <label className="se-field"><span>{label}</span>{children}</label>;
-}
+});
 
 // ── Slider ────────────────────────────────────────────────────────────────────
 /**
  * A range control drawn by the library (no native `<input type="range">`): drag, click the track, or use the keys —
  * ← → ↑ ↓ step, Page Up / Down ten steps, Home / End the ends. `track` paints the track (e.g. a hue gradient).
  */
-export function Slider({ value, min = 0, max = 100, step = 1, onChange, label, valueText, track, className, style }: {
-  value: number;
-  min?: number;
-  max?: number;
-  step?: number;
-  onChange: (v: number) => void;
-  label: string;
-  valueText?: string;
-  track?: string;
-  className?: string;
-  style?: CSSProperties;
-}) {
+function SliderBase({ value, min = 0, max = 100, step = 1, onChange, label, valueText, track, className, style }: SliderProps) {
   const ref = useRef<HTMLDivElement>(null);
   const snap = (v: number) => Math.min(max, Math.max(min, Math.round((v - min) / step) * step + min));
   const at = (clientX: number) => {
@@ -356,3 +354,4 @@ export function Slider({ value, min = 0, max = 100, step = 1, onChange, label, v
     </div>
   );
 }
+export const Slider = overridable("Slider", SliderBase);

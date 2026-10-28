@@ -12,8 +12,8 @@ export type ToolId =
   | "align" | "bullet" | "ordered" | "check" | "outdent" | "indent"
   | "quote" | "codeblock" | "link" | "image" | "video" | "file" | "media" | "table" | "hr"
   | "painter" | "clear" | "find" | "preview" | "fullscreen";
-/** Groups of tools; a divider between groups. */
-export type ToolbarLayout = ToolId[][];
+/** Groups of tools; a divider between groups. Ids beyond the built-ins name your own tools (`components.tools`). */
+export type ToolbarLayout = (ToolId | (string & {}))[][];
 
 export type PresetName = "full" | "standard" | "basic" | "minimal";
 export interface Preset { formats: Format[]; toolbar: ToolbarLayout; statusbar: boolean }

@@ -6,6 +6,7 @@
 //   themed    — `vars`, Tailwind `classNames`, and a theme switch, live
 //   viewer    — the server-safe half: SynTextView and toHTML side by side
 //   custom    — a toolbar of the host's own, built from the exported tools
+//   ui        — parts of the UI swapped for the host's own components (`components`), live
 //
 // Every one of them is `useSynTextEditor(config)` + `{editor.render()}`.
 
@@ -21,13 +22,15 @@ import { SynTextView } from '@syn/view/SynTextView'
 import { ColorTool, ListTool, MarkTool, MediaTool, UndoTool, RedoTool } from '@syn/UI/toolbar/tools'
 import { ToolButton } from '@syn/UI/primitives'
 import { SEED, WORD_DOC } from '@test-preview/demo/sample'
+import { CustomUIDemo } from '@test-preview/demo/CustomUI'
 import layoutCss from '@syn/styles/layout.css?inline'
 import themeCss from '@syn/styles/theme.css?inline'
 
-type Demo = 'word' | 'comment' | 'minimal' | 'themed' | 'controlled' | 'viewer' | 'custom'
+type Demo = 'word' | 'comment' | 'minimal' | 'themed' | 'controlled' | 'viewer' | 'custom' | 'ui'
 const DEMOS: { id: Demo; label: string }[] = [
   { id: 'word', label: 'Word processor' }, { id: 'comment', label: 'Comment (basic)' }, { id: 'minimal', label: 'Minimal' },
   { id: 'themed', label: 'Theming' }, { id: 'controlled', label: 'Controlled & right-click' }, { id: 'viewer', label: 'Viewer & HTML' }, { id: 'custom', label: 'Custom toolbar' },
+  { id: 'ui', label: 'Custom components' },
 ]
 
 export default function App () {
@@ -57,6 +60,7 @@ export default function App () {
           {demo === 'controlled' && <ControlledDemo />}
           {demo === 'viewer' && <ViewerDemo />}
           {demo === 'custom' && <CustomToolbarDemo />}
+          {demo === 'ui' && <CustomUIDemo />}
         </main>
       </div>
     </div>

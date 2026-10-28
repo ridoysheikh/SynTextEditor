@@ -10,10 +10,10 @@ import {
 } from "lucide-react";
 import type { Block } from "../core/model";
 import type { SynTextEditor } from "../SynTextEditor";
-import { MenuItem, MenuSeparator, PopoverButton, ToolButton, useIsoLayoutEffect } from "./primitives";
+import { MenuItem, MenuSeparator, PopoverButton, ToolButton, useIsoLayoutEffect, overridable } from "./primitives";
 import { useToolState } from "./toolbar/tools";
 
-export function FloatBar({ editor, surface, scroller }: { editor: SynTextEditor; surface: HTMLElement | null; scroller: HTMLElement | null }) {
+function FloatBarBase({ editor, surface, scroller }: { editor: SynTextEditor; surface: HTMLElement | null; scroller: HTMLElement | null }) {
   const { state } = useToolState(editor);
   const bar = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -115,3 +115,4 @@ export function FloatBar({ editor, surface, scroller }: { editor: SynTextEditor;
     </div>
   );
 }
+export const FloatBar = overridable("FloatBar", FloatBarBase);

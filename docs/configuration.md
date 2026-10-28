@@ -12,7 +12,7 @@ Options are props: change one and the same editor follows — the document, the 
 | `readOnly` | |
 | `onChange` `onFocus` `onBlur` `onError` | the latest functions are always used |
 | `preset` `formats` `toolbar` `statusbar` `stickyToolbar` `toolbarWrap` `placeholder` `maxLength` `minHeight` `maxHeight` `variant` `spellCheck` `ariaLabel` `theme` `density` `vars` `classNames` `styles` `colors` `highlights` `fonts` `sizes` | compared by value, so inline objects and arrays are fine |
-| `storage` `upload` `contextMenu` | read when used, so functions inside them are always the latest |
+| `storage` `upload` `contextMenu` `components` | read when used, so functions inside them are always the latest |
 
 Only `history`, `autoFocus` and `id` are read once. Outside React, or from anywhere with the instance:
 
@@ -61,7 +61,7 @@ function Note({ dark, compact, locked }: Props) {
 
 | Option | Type | Default | |
 |---|---|---|---|
-| `toolbar` | `ToolId[][] \| false` | the preset's | Groups of tools, a divider between groups. `false` hides it. See [tool ids](customization.md#toolbar-layout). |
+| `toolbar` | `ToolId[][] \| false` | the preset's | Groups of tools, a divider between groups. `false` hides it. See [tool ids](customization.md#toolbar-layout). Ids of [your own tools](components.md#tools) go here too. |
 | `statusbar` | `boolean` | on for `full` | Word and character counts, upload progress, table position. |
 | `stickyToolbar` | `boolean` | `false` | The toolbar stays at the top while the page scrolls. |
 | `toolbarWrap` | `"wrap" \| "scroll"` | `"wrap"` | When narrow: wrap onto more rows, or scroll sideways. |
@@ -100,6 +100,12 @@ function Note({ dark, compact, locked }: Props) {
 | `onFocus` | `(editor) => void` | Focus entered the editor (cells included). |
 | `onBlur` | `(editor) => void` | Focus left the editor. |
 | `onError` | `(error: Error, editor) => void` | Rejected files, failed uploads, storage errors, a blocked clipboard read. |
+
+## Components
+
+| Option | Type | Default | |
+|---|---|---|---|
+| `components` | `ComponentsConfig` | the library's | Your own components for any part of the UI — each gets the part's props plus `Default`. `tools` replaces or adds toolbar tools by id. Live. See [Your own components](components.md). |
 
 ## Right-click menu
 

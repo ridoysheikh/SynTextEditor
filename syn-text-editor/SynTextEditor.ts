@@ -13,6 +13,7 @@ import {
 import type { Sel } from "./core/ops";
 import type { CellRef } from "./core/table";
 import { createRestStorage, kindOf, type Asset, type AssetKind, type RestStorageOptions, type StorageAdapter } from "./core/storage";
+import type { ComponentsConfig } from "./UI/slots";
 import { COLORS, HIGHLIGHTS, SIZES, loadFonts, resolveFonts, type FontOption, type FontsConfig, type Swatch } from "./core/styles";
 import { RichEngine, type EditorState } from "./editor/engine";
 import type { ContextItemId } from "./contextMenu";
@@ -96,6 +97,11 @@ export interface SynTextEditorConfig {
 
   /** The right-click menu: `false` keeps the browser's own; an object chooses and adds items. Default: on. */
   contextMenu?: boolean | ContextMenuConfig;
+  /**
+   * Your own components for any part of the UI — buttons, menus, dialogs, the colour picker, the toolbar, single
+   * tools… Each gets the part's props plus `Default` (the library's). See `SynComponents`.
+   */
+  components?: ComponentsConfig;
 
   /** "full" (a word processor, default), "standard", "basic" (text weight and lists), "minimal". */
   preset?: PresetName;
@@ -175,7 +181,7 @@ const isAdapter = (s: StorageAdapter | RestStorageOptions): s is StorageAdapter 
 export const LIVE_OPTIONS = [
   "preset", "formats", "toolbar", "statusbar", "stickyToolbar", "toolbarWrap", "placeholder", "maxLength", "minHeight",
   "maxHeight", "variant", "spellCheck", "ariaLabel", "theme", "density", "vars", "classNames", "styles", "colors",
-  "highlights", "fonts", "sizes", "storage", "upload", "contextMenu",
+  "highlights", "fonts", "sizes", "storage", "upload", "contextMenu", "components",
 ] as const satisfies readonly (keyof SynTextEditorConfig)[];
 export type LiveOptions = Pick<SynTextEditorConfig, (typeof LIVE_OPTIONS)[number]>;
 

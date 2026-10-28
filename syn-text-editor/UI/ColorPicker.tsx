@@ -5,7 +5,7 @@
 // (arrows; Shift for bigger steps; Enter applies).
 
 import { useEffect, useRef, useState } from "react";
-import { Slider } from "./primitives";
+import { Slider, overridable } from "./primitives";
 
 export interface HSV { h: number; s: number; v: number }
 
@@ -39,7 +39,7 @@ export function hsvToHex({ h, s, v }: HSV): string {
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
 /** The picker itself — `onApply` gets a "#rrggbb" when the user confirms. */
-export function ColorPicker({ initial, onApply, applyLabel = "Apply" }: { initial?: string; onApply: (hex: string) => void; applyLabel?: string }) {
+function ColorPickerBase({ initial, onApply, applyLabel = "Apply" }: { initial?: string; onApply: (hex: string) => void; applyLabel?: string }) {
   const [hsv, setHsv] = useState<HSV>(() => hexToHsv(initial ?? "#2f6bff"));
   const hex = hsvToHex(hsv);
   const [draft, setDraft] = useState<string | null>(null);
@@ -101,6 +101,9 @@ export function ColorPicker({ initial, onApply, applyLabel = "Apply" }: { initia
     </div>
   );
 }
+
+/** Slot `ColorPicker`. */
+export const ColorPicker = overridable("ColorPicker", ColorPickerBase);
 
 /** Custom colours used lately, newest first — shared by every editor on the page. */
 const recent: string[] = [];

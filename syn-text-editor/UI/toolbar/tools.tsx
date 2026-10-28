@@ -3,19 +3,20 @@
 // Every control on the toolbar, each standalone: `<BoldTool editor={editor} />` works in a toolbar of the host's
 // own. They read the editor's state through `useToolState` and act through the instance.
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { createElement, useContext, useState, type CSSProperties, type ReactNode } from "react";
 import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, Check, ChevronDown, Code, Code2, Eraser, Expand, Eye, File,
   Film, Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Italic, Link2, List, ListChecks, ListOrdered, Minus,
   Paintbrush, Pipette, Plus, Quote, Redo2, Search, Shrink, Strikethrough, Subscript, Superscript, Table, Underline, Undo2, Images,
 } from "lucide-react";
 import { BLOCK_LABEL, BLOCK_SIZE, SIZE_MAX, SIZE_MIN, type Align, type TextType, type Toggle } from "../../core/model";
-import { colorValue, type Swatch } from "../../core/styles";
+import { colorValue } from "../../core/styles";
 import { ColorPicker, recentColors, rememberColor } from "../ColorPicker";
 import type { EditorState } from "../../editor/engine";
 import { useEditorValue } from "../../hooks";
 import type { SynTextEditor, UIState } from "../../SynTextEditor";
-import { keep, MenuItem, MenuLabel, MenuSeparator, PopoverButton, ToolButton } from "../primitives";
+import { ComponentsContext, keep, MenuItem, MenuLabel, MenuSeparator, overridable, PopoverButton, ToolButton } from "../primitives";
+import type { ColorMenuProps, ToolProps } from "../slots";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 /** A shortcut as this platform writes it. */
@@ -30,7 +31,7 @@ export function useToolState(editor: SynTextEditor): { state: EditorState | null
 export function useUI(editor: SynTextEditor): UIState {
   return useEditorValue(editor, ["ui"], (e) => e.getUI());
 }
-export interface ToolProps { editor: SynTextEditor }
+export type { ToolProps };
 
 // ── history ───────────────────────────────────────────────────────────────────
 export function UndoTool({ editor }: ToolProps) {
@@ -170,14 +171,12 @@ export function ColorTool({ editor, kind }: ToolProps & { kind: "color" | "highl
   return (
     <PopoverButton label={title} disabled={off}
       icon={<>{kind === "color" ? <Baseline /> : <Highlighter />}<span className="se-swatch-bar" style={{ background: bar, outline: !cur && kind === "highlight" ? "1px dashed var(--se-muted)" : undefined }} /></>}>
-      {(close) => <ColorPanel kind={kind} title={title} list={list} cur={cur} onPick={(c) => { close(); set(c); }} />}
+      {(close) => <ColorMenu kind={kind} title={title} list={list} cur={cur} onPick={(c) => { close(); set(c); }} />}
     </PopoverButton>
   );
 }
 
-function ColorPanel({ kind, title, list, cur, onPick }: {
-  kind: "color" | "highlight"; title: string; list: Swatch[]; cur: string | undefined; onPick: (c: string | null) => void;
-}) {
+function ColorMenuBase({ kind, title, list, cur, onPick }: ColorMenuProps) {
   const [hover, setHover] = useState<string | null>(null);
   const [custom, setCustom] = useState(false);
   const recent = recentColors();
@@ -219,6 +218,9 @@ function ColorPanel({ kind, title, list, cur, onPick }: {
     </div>
   );
 }
+
+/** What the colour and highlight tools open. Slot `ColorMenu`. */
+export const ColorMenu = overridable("ColorMenu", ColorMenuBase);
 
 // ── paragraph ─────────────────────────────────────────────────────────────────
 const ALIGNS: { value: Align; label: string; Icon: typeof AlignLeft; kbd: string }[] = [
@@ -347,6 +349,23 @@ export function FullscreenTool({ editor }: ToolProps) {
 
 /** One tool by id — what `Toolbar` lays out. */
 export function Tool({ editor, id }: ToolProps & { id: string }): ReactNode {
+  const custom = useContext(ComponentsContext).tools?.[id];
+  if (custom) return createElement(custom, { editor, Default: BUILT_IN.has(id) ? builtIn(id) : undefined });
+  return <BuiltInTool editor={editor} id={id} />;
+}
+
+const BUILT_IN = new Set(["undo", "redo", "block", "font", "size", "bold", "italic", "underline", "strike", "code", "sub", "sup",
+  "color", "highlight", "align", "bullet", "ordered", "check", "indent", "outdent", "quote", "codeblock", "link", "image",
+  "video", "file", "media", "table", "hr", "painter", "clear", "find", "preview", "fullscreen"]);
+const builtIns = new Map<string, (p: ToolProps) => ReactNode>();
+/** The library's tool `id` as a component — the `Default` a replacement tool gets. */
+function builtIn(id: string) {
+  let C = builtIns.get(id);
+  if (!C) { C = ({ editor }: ToolProps) => <BuiltInTool editor={editor} id={id} />; builtIns.set(id, C); }
+  return C;
+}
+
+function BuiltInTool({ editor, id }: ToolProps & { id: string }): ReactNode {
   switch (id) {
     case "undo": return <UndoTool editor={editor} />;
     case "redo": return <RedoTool editor={editor} />;

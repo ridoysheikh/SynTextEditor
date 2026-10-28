@@ -11,10 +11,11 @@ import { FloatBar } from "./UI/FloatBar";
 import { ContextMenu } from "./UI/ContextMenu";
 import "./contextMenu";
 import { MediaGallery } from "./UI/media/MediaGallery";
-import { cx, LayerContext, TooltipHost } from "./UI/primitives";
+import { ComponentsContext, cx, LayerContext, TooltipHost } from "./UI/primitives";
 import { Toolbar } from "./UI/toolbar/Toolbar";
 import { PRESETS } from "./presets";
 
+const NO_COMPONENTS = {};
 const len = (v: number | string | undefined) => (typeof v === "number" ? `${v}px` : v);
 
 export function EditorView({ editor, className, style }: { editor: SynTextEditor; className?: string; style?: CSSProperties }) {
@@ -47,6 +48,7 @@ export function EditorView({ editor, className, style }: { editor: SynTextEditor
   const modal = ui.modal;
 
   return (
+    <ComponentsContext.Provider value={c.components ?? NO_COMPONENTS}>
     <LayerContext.Provider value={layer}>
       <TooltipHost>
         {() => (
@@ -111,6 +113,7 @@ export function EditorView({ editor, className, style }: { editor: SynTextEditor
         )}
       </TooltipHost>
     </LayerContext.Provider>
+    </ComponentsContext.Provider>
   );
 }
 

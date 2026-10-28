@@ -6,7 +6,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronRight } from "lucide-react";
 import type { ContextMenuContext, ContextMenuItem, SynTextEditor } from "../SynTextEditor";
-import { Layer, cx, fitAxis, keep, revealRow } from "./primitives";
+import { Layer, cx, fitAxis, keep, revealRow, overridable } from "./primitives";
 import { useUI } from "./toolbar/tools";
 
 type Row = Exclude<ContextMenuItem, "separator">;
@@ -19,7 +19,7 @@ const step = (items: ContextMenuItem[], from: number, dir: 1 | -1) => {
   return from;
 };
 
-export function ContextMenu({ editor }: { editor: SynTextEditor }) {
+function ContextMenuBase({ editor }: { editor: SynTextEditor }) {
   const ui = useUI(editor);
   const open = ui.contextMenu;
   return open ? <Menu key={`${open.ctx.x},${open.ctx.y}`} editor={editor} ctx={open.ctx} items={open.items} /> : null;
@@ -164,3 +164,4 @@ function Panel({ level, x, y, anchor, children }: { level: number; x: number; y:
     </div>
   );
 }
+export const ContextMenu = overridable("ContextMenu", ContextMenuBase);

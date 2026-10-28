@@ -10,10 +10,10 @@ import { isCollapsed } from "../core/ops";
 import { useEditorValue } from "../hooks";
 import type { SynTextEditor } from "../SynTextEditor";
 import { SynTextView } from "../view/SynTextView";
-import { Button, Field, Modal, Slider, ToolButton, cx } from "./primitives";
+import { Button, Field, Modal, Slider, ToolButton, cx, overridable } from "./primitives";
 import { keys, useToolState, useUI } from "./toolbar/tools";
 
-export function LinkDialog({ editor, onClose }: { editor: SynTextEditor; onClose: () => void }) {
+function LinkDialogBase({ editor, onClose }: { editor: SynTextEditor; onClose: () => void }) {
   const [state] = useState(() => editor.getState());
   const sel = editor.getSelection();
   const bare = !!sel && isCollapsed(sel) && !state?.link;
@@ -52,7 +52,7 @@ export function LinkDialog({ editor, onClose }: { editor: SynTextEditor; onClose
   );
 }
 
-export function MediaDetailsDialog({ editor, index, onClose }: { editor: SynTextEditor; index: number; onClose: () => void }) {
+function MediaDetailsDialogBase({ editor, index, onClose }: { editor: SynTextEditor; index: number; onClose: () => void }) {
   const block = editor.getDoc().blocks[index];
   const [alt, setAlt] = useState(block?.alt ?? "");
   const [caption, setCaption] = useState(block?.caption ?? "");
@@ -93,7 +93,7 @@ export function MediaDetailsDialog({ editor, index, onClose }: { editor: SynText
   );
 }
 
-export function PreviewDialog({ editor, onClose }: { editor: SynTextEditor; onClose: () => void }) {
+function PreviewDialogBase({ editor, onClose }: { editor: SynTextEditor; onClose: () => void }) {
   const [tab, setTab] = useState<"preview" | "html" | "json">("preview");
   const [mode, setMode] = useState<"class" | "inline">("class");
   const [copied, setCopied] = useState(false);
@@ -133,7 +133,7 @@ export function PreviewDialog({ editor, onClose }: { editor: SynTextEditor; onCl
   );
 }
 
-export function FindBar({ editor }: { editor: SynTextEditor }) {
+function FindBarBase({ editor }: { editor: SynTextEditor }) {
   const [q, setQ] = useState("");
   const [r, setR] = useState("");
   const [cs, setCs] = useState(false);
@@ -169,7 +169,7 @@ export function FindBar({ editor }: { editor: SynTextEditor }) {
   );
 }
 
-export function StatusBar({ editor, className, style }: { editor: SynTextEditor; className?: string; style?: CSSProperties }) {
+function StatusBarBase({ editor, className, style }: { editor: SynTextEditor; className?: string; style?: CSSProperties }) {
   const { state } = useToolState(editor);
   const ui = useUI(editor);
   const max = editor.config.maxLength;
@@ -195,3 +195,8 @@ export function StatusBar({ editor, className, style }: { editor: SynTextEditor;
     </div>
   );
 }
+export const LinkDialog = overridable("LinkDialog", LinkDialogBase);
+export const MediaDetailsDialog = overridable("MediaDetailsDialog", MediaDetailsDialogBase);
+export const PreviewDialog = overridable("PreviewDialog", PreviewDialogBase);
+export const FindBar = overridable("FindBar", FindBarBase);
+export const StatusBar = overridable("StatusBar", StatusBarBase);

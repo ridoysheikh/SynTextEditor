@@ -28,11 +28,11 @@ export function useSynTextEditor(config: SynTextEditorConfig = {}): SynTextEdito
   const [editor] = useState(() => new SynTextEditor(config));
   editor.updateCallbacks(config);
   // Options holding functions are read when used — hand over the latest each render, without a redraw.
-  editor.setOptions({ contextMenu: config.contextMenu, storage: config.storage, upload: config.upload }, { silent: true });
+  editor.setOptions({ contextMenu: config.contextMenu, storage: config.storage, upload: config.upload, components: config.components }, { silent: true });
 
   const seen = useRef<string | null>(null);
   const data: Record<string, unknown> = {};
-  for (const k of LIVE_OPTIONS) if (k !== "contextMenu" && k !== "storage" && k !== "upload") data[k] = config[k];
+  for (const k of LIVE_OPTIONS) if (k !== "contextMenu" && k !== "storage" && k !== "upload" && k !== "components") data[k] = config[k];
   const key = JSON.stringify(data);
   useEffect(() => {
     if (seen.current === null) { seen.current = key; return; }            // the constructor already has them
