@@ -67,6 +67,14 @@ function Note ({ children }: { children: React.ReactNode }) {
   return <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">{children}</p>
 }
 
+// Pushed after the default fonts; each `src` is loaded when the editor mounts.
+const BRAND_FONTS = {
+  add: [
+    { label: 'Playfair', value: "'Playfair Display', Georgia, serif", src: 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap' },
+    { label: 'Caveat', value: 'Caveat, cursive', src: 'https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&display=swap' },
+  ],
+}
+
 function WordDemo () {
   const storage = useMemo(() => createMemoryStorage({ latency: 900, seed: SEED }), [])
   const editor = useSynTextEditor({
@@ -76,12 +84,13 @@ function WordDemo () {
     storage,
     maxHeight: 'calc(100vh - 170px)',
     placeholder: 'Start writing…',
+    fonts: BRAND_FONTS,
     onError: (e) => console.warn('[editor]', e.message),
   })
   useEffect(() => { (window as unknown as { __editor: unknown }).__editor = editor }, [editor])
   return (
     <>
-      <Note>Full preset over in-memory storage (uploads report progress for ~1s). Paste or drop images straight in; open the media library from the toolbar.</Note>
+      <Note>Full preset over in-memory storage (uploads report progress for ~1s). Paste or drop images straight in; open the media library from the toolbar. The font menu has two pushed web fonts (Playfair, Caveat).</Note>
       {editor.render()}
     </>
   )

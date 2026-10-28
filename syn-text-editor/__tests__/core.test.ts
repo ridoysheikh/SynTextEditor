@@ -4,7 +4,7 @@ import { cleanBlock, docLength, docToPlain, docWords, isEmptyDoc, safeLink, safe
 import * as ops from "../core/ops";
 import * as tables from "../core/table";
 import { createMemoryStorage } from "../core/storage";
-import { listMarkers } from "../core/styles";
+import { FONTS, fontFaceCSS, fontStylesheets, listMarkers, resolveFonts, usedFonts } from "../core/styles";
 import { PRESETS } from "../presets";
 
 const doc = (...blocks: RichDoc["blocks"]): RichDoc => ({ version: 1, blocks });
@@ -193,5 +193,36 @@ describe("memory storage", () => {
     expect((await s.list({ limit: 10, kind: "image" })).items).toHaveLength(2);
     await s.remove!("1");
     expect((await s.list({ limit: 10 })).total).toBe(4);
+  });
+});
+
+describe("fonts", () => {
+  const brand = { label: "Brand", value: "'Brand Sans', sans-serif", src: [{ url: "/fonts/brand.woff2", weight: 400 }, { url: "/fonts/brand-b.woff2", weight: "700" }] };
+  const gf = { label: "Lora", value: "Lora, serif", src: "https://fonts.googleapis.com/css2?family=Lora&display=swap" };
+
+  it("pushes onto the defaults, or replaces them", () => {
+    expect(resolveFonts(undefined)).toBe(FONTS);
+    expect(resolveFonts([gf])).toEqual([gf]);
+    const pushed = resolveFonts({ add: [gf, { label: "Serif!", value: FONTS[1].value }] });
+    expect(pushed).toHaveLength(FONTS.length + 1);
+    expect(pushed.at(-1)!.label).toBe("Serif!");
+  });
+
+  it("writes @font-face rules for files and links for stylesheets", () => {
+    const css = fontFaceCSS([brand, gf]);
+    expect(css.split("\n")).toHaveLength(2);
+    expect(css).toContain('font-family:"Brand Sans";src:url("/fonts/brand.woff2") format("woff2");font-weight:400');
+    expect(css).toContain("font-weight:700");
+    expect(fontStylesheets([brand, gf])).toEqual([gf.src]);
+    expect(fontFaceCSS([{ label: "x", value: "X", src: "/a.woff2\");}body{color:red" }])).toBe("");
+    expect(fontStylesheets([{ label: "x", value: "X", src: "javascript:alert(1)" }])).toEqual([]);
+  });
+
+  it("finds the fonts a document uses, tables included", () => {
+    const doc = toDoc({ version: 1, blocks: [
+      { type: "p", spans: [{ text: "a", font: gf.value }] },
+      { type: "table", spans: [], rows: [[{ spans: [{ text: "b", font: brand.value }] }]] },
+    ] })!;
+    expect(usedFonts([brand, gf, FONTS[0]], doc.blocks).map((f) => f.label)).toEqual(["Brand", "Lora"]);
   });
 });

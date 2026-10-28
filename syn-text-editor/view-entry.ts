@@ -14,8 +14,8 @@ export {
 export type {
   RichDoc, Block, Span, Marks, Cell, BlockType, TextType, AtomType, Align, ListKind, Toggle, MarkKey, Format, Schema,
 } from "./core/model";
-export { COLORS, HIGHLIGHTS, FONTS, SIZES, colorValue } from "./core/styles";
-export type { Swatch, FontOption } from "./core/styles";
+export { COLORS, HIGHLIGHTS, FONTS, SIZES, colorValue, resolveFonts, fontFamily, fontFaceCSS, fontStylesheets, usedFonts, loadFonts } from "./core/styles";
+export type { Swatch, FontOption, FontFile, FontsConfig } from "./core/styles";
 
 /** Plain text of a stored value (a document, its JSON, or text). */
 export { docToPlain as toPlainText } from "./core/model";

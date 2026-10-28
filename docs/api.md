@@ -130,6 +130,7 @@ editor.once("ready", () => editor.focus());
 
 ### Other members
 
+`addFonts(...fonts)` (push onto the font menu and load them — see [custom fonts](customization.md#custom-fonts)),
 `config` (the current options), `schema` (`has(format)`), `toolbar` (the resolved layout),
 `palette` (`{ colors, highlights, fonts, sizes }`), `themeClass`, `varStyle`, `render({ className?, style? })`.
 
@@ -183,6 +184,7 @@ From `@syntext/react/view` (and the main entry).
 | `className`, `style` | | | on the `.se-content` root |
 | `fallback` | `ReactNode` | `null` | shown for an empty document |
 | `linkTarget` | `"_blank" \| "_self"` | `"_blank"` | links get `rel="noopener noreferrer nofollow"` |
+| `fonts` | `FontOption[] \| { add }` | — | the editor's `fonts`: faces the document uses that have a `src` are loaded |
 
 ### Functions
 
@@ -195,6 +197,7 @@ From `@syntext/react/view` (and the main entry).
 | `docToPlain(doc)` (alias `toPlainText`) · `docLength(doc)` · `docWords(doc)` · `isEmptyDoc(doc)` | |
 | `safeLink(href)` · `safeSrc(src)` | the URL checks the model uses |
 | `colorValue(name, "color" \| "highlight", inline?)` | a palette name → CSS value |
+| `resolveFonts(fonts)` · `fontFaceCSS(fonts)` · `fontStylesheets(fonts)` · `usedFonts(fonts, blocks)` · `loadFonts(fonts)` · `fontFamily(value)` | [custom fonts](customization.md#custom-fonts) |
 | `COLORS` `HIGHLIGHTS` `FONTS` `SIZES` `BLOCK_SIZE` `BLOCK_LABEL` `ALL_FORMATS` | defaults and constants |
 
 ## Keyboard

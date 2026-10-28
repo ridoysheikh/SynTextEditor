@@ -4,6 +4,7 @@
 - [Toolbar layout](#toolbar-layout) — which tools, in which groups
 - [Your own toolbar](#your-own-toolbar) — the exported tools and primitives
 - [Palettes, fonts and sizes](#palettes-fonts-and-sizes)
+- [Custom fonts](#custom-fonts)
 - [Variants and frame](#variants-and-frame)
 - [Class-name reference](#class-name-reference) — every element, for CSS overrides
 
@@ -181,11 +182,62 @@ useSynTextEditor({
 |---|---|---|
 | `colors` | `{ name, label, hex }` — `name`: lowercase letters, digits, `-` | gray, red, orange, yellow, green, teal, blue, purple, pink |
 | `highlights` | same | yellow, green, teal, blue, purple, pink, red, orange, gray |
-| `fonts` | `{ label, value }` — `value` is a CSS `font-family` stack, stored as-is | Sans (Inter), Serif (Georgia), Mono, Arial, Times, Courier, Verdana |
+| `fonts` | `{ label, value, src? }` — `value` is a CSS `font-family` stack, stored as-is; or `{ add: [...] }` | Sans (Inter), Serif (Georgia), Mono, Arial, Times, Courier, Verdana |
 | `sizes` | px | 10, 11, 12, 13, 14, 15, 16, 18, 20, 24, 28, 32, 36, 48, 64 |
 
 `hex` is used in the swatch fallback and in inline-mode HTML. Font sizes can always be typed (8–96px). The custom
-colour picker stores hex values. Fonts aren't loaded by the library — load the faces you list.
+colour picker stores hex values.
+
+## Custom fonts
+
+Push your own fonts onto the menu with `{ add }` — the defaults stay, yours come after (one with the same `value` as
+a default replaces it). Give a font a `src` and the editor loads it; without one, the page must already load it.
+
+```ts
+useSynTextEditor({
+  fonts: {
+    add: [
+      // a stylesheet: Google Fonts, Bunny Fonts, your own CSS
+      { label: "Playfair", value: "'Playfair Display', Georgia, serif",
+        src: "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400..900&display=swap" },
+      // one font file
+      { label: "Brand", value: "'Brand Sans', system-ui, sans-serif", src: "/fonts/brand-sans.woff2" },
+      // files by weight and style
+      { label: "Brand Serif", value: "'Brand Serif', Georgia, serif", src: [
+        { url: "/fonts/brand-serif.woff2", weight: 400 },
+        { url: "/fonts/brand-serif-bold.woff2", weight: 700 },
+        { url: "/fonts/brand-serif-italic.woff2", weight: 400, style: "italic" },
+        // a variable font: { url: "/fonts/brand-serif-var.woff2", weight: "100 900" }
+      ] },
+    ],
+  },
+});
+
+fonts: [{ label: "Body", value: "Inter, sans-serif" }, …]   // a list replaces the defaults instead
+```
+
+| `src` | Loaded as |
+|---|---|
+| a URL ending in `.woff2` `.woff` `.ttf` `.otf` | an `@font-face` named after the first family in `value` |
+| any other URL | a `<link rel="stylesheet">` — it must declare the family named in `value` |
+| `{ url, weight?, style? }[]` | one `@font-face` per file; `weight` is `400`, `"700"` or a range `"100 900"` |
+
+Each stylesheet and face goes into `<head>` once (`link[data-se-font]`, `style[data-se-fonts]`), however many editors
+use it. URLs may be `https:`, a path, `blob:` or a base64 `data:font/…`. Files from another origin need CORS headers.
+
+**At runtime:** `editor.addFonts(font, …)` pushes onto the menu and loads them — e.g. after a user uploads a font.
+(With the hook, the `fonts` prop wins when it changes; keep pushed fonts in your state and pass them through it.)
+
+**Showing documents:** documents store only the `value` stack. Give the viewer the same option and it loads the
+faces the document uses — server-rendered as a `<link>` / `<style>`:
+
+```tsx
+<SynTextView value={doc} fonts={BRAND_FONTS} />
+```
+
+For HTML elsewhere (an email, another app), `fontFaceCSS(fonts)` returns the `@font-face` rules and
+`fontStylesheets(fonts)` the stylesheet URLs; `usedFonts(fonts, doc.blocks)` keeps only those a document uses, and
+`loadFonts(fonts)` loads them into the page yourself.
 
 ## Variants and frame
 

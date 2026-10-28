@@ -80,7 +80,7 @@ function Note({ dark, compact, locked }: Props) {
 | `styles` | same keys, `CSSProperties` | — | Inline styles per part. |
 | `colors` | `Swatch[]` | 9 colours | The text-colour palette. See [palettes](customization.md#palettes-fonts-and-sizes). |
 | `highlights` | `Swatch[]` | 9 colours | The highlight palette. |
-| `fonts` | `FontOption[]` | 7 faces | The font menu. |
+| `fonts` | `FontOption[] \| { add: FontOption[] }` | 7 faces | The font menu. A list replaces the defaults; `{ add }` pushes yours after them. A font with `src` is loaded for you. See [custom fonts](customization.md#custom-fonts). |
 | `sizes` | `number[]` | 10–64 | The size menu (any size 8–96 can still be typed). |
 
 ## Media

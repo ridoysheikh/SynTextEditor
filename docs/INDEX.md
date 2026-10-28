@@ -7,7 +7,7 @@
 | [Getting started](getting-started.md) | Install, the two stylesheets, a first editor, showing documents, Next.js and server rendering |
 | [Configuration](configuration.md) | Every option of `useSynTextEditor(config)`, with defaults |
 | [Theming](theming.md) | Every `--se-*` variable with its light, dark, compact and comfortable values; theme modes, density, wrapper-class themes, Tailwind |
-| [Customization](customization.md) | Presets and formats, toolbar layouts and tool ids, building your own toolbar, per-part classes and styles, palettes and fonts, the class-name reference |
+| [Customization](customization.md) | Presets and formats, toolbar layouts and tool ids, building your own toolbar, per-part classes and styles, palettes, custom web fonts (`fonts: { add }`, `src`), the class-name reference |
 | [The right-click menu](context-menu.md) | Default rows per target, turning it off, choosing rows by id, your own rows and submenus, opening it from code |
 | [Storage and media](storage.md) | The four operations, REST endpoints, response shapes, upload limits, examples for Next.js routes and S3 |
 | [API reference](api.md) | The instance, events, hooks, components, the viewer, HTML functions, keyboard shortcuts |

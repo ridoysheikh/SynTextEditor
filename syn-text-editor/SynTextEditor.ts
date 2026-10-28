@@ -13,7 +13,7 @@ import {
 import type { Sel } from "./core/ops";
 import type { CellRef } from "./core/table";
 import { createRestStorage, kindOf, type Asset, type AssetKind, type RestStorageOptions, type StorageAdapter } from "./core/storage";
-import { COLORS, FONTS, HIGHLIGHTS, SIZES, type FontOption, type Swatch } from "./core/styles";
+import { COLORS, HIGHLIGHTS, SIZES, loadFonts, resolveFonts, type FontOption, type FontsConfig, type Swatch } from "./core/styles";
 import { RichEngine, type EditorState } from "./editor/engine";
 import type { ContextItemId } from "./contextMenu";
 import { PRESETS, type PresetName, type ToolbarLayout } from "./presets";
@@ -141,7 +141,8 @@ export interface SynTextEditorConfig {
 
   colors?: Swatch[];
   highlights?: Swatch[];
-  fonts?: FontOption[];
+  /** The font menu: a list replaces the defaults; `{ add: [...] }` keeps them and pushes yours. Fonts with `src` are loaded. */
+  fonts?: FontsConfig;
   sizes?: number[];
   /** Undo steps kept (default 300). */
   history?: number;
@@ -221,6 +222,7 @@ export class SynTextEditor {
       this.engine?.setSchema(this.schema);
     }
     if (all || changed.has("preset") || changed.has("toolbar")) this.toolbar = c.toolbar === false ? false : c.toolbar ?? preset.toolbar;
+    if (all || changed.has("fonts")) loadFonts(resolveFonts(c.fonts));
     if (all || changed.has("storage")) {
       const st = c.storage;
       if (!st) { this.storage = null; this.rest = null; }
@@ -474,8 +476,16 @@ export class SynTextEditor {
   get palette() {
     return {
       colors: this.config.colors ?? COLORS, highlights: this.config.highlights ?? HIGHLIGHTS,
-      fonts: this.config.fonts ?? FONTS, sizes: this.config.sizes ?? SIZES,
+      fonts: resolveFonts(this.config.fonts), sizes: this.config.sizes ?? SIZES,
     };
+  }
+  /**
+   * Push fonts onto the font menu (and load their `src`) — after the ones it has, replacing any with the same
+   * value. With the hook, prefer the `fonts` option; a later change to it replaces what was pushed here.
+   */
+  addFonts(...fonts: FontOption[]) {
+    const keep = this.palette.fonts.filter((f) => !fonts.some((a) => a.value === f.value));
+    this.setOptions({ fonts: [...keep, ...fonts] });
   }
   /** The classes that set the theme and density on the root and its layer. */
   get themeClass(): string {

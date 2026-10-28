@@ -5,7 +5,7 @@
 
 import { createElement, type CSSProperties, type ReactNode } from "react";
 import { isAtom, toDoc, type Block, type Cell, type RichDoc, type Span } from "../core/model";
-import { blockClass, blockData, formatBytes, listMarkers, spanClass, spanStyle } from "../core/styles";
+import { blockClass, blockData, fontFaceCSS, fontStylesheets, formatBytes, listMarkers, resolveFonts, spanClass, spanStyle, usedFonts, type FontsConfig } from "../core/styles";
 
 export interface SynTextViewProps {
   /** A document, its JSON, or plain text. */
@@ -20,17 +20,23 @@ export interface SynTextViewProps {
   fallback?: ReactNode;
   /** Link attributes: default opens in a new tab with noopener. */
   linkTarget?: "_blank" | "_self";
+  /** The editor's `fonts` option: the faces this document uses that have a `src` are loaded with it. */
+  fonts?: FontsConfig;
 }
 
 const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
 const dataProps = (b: Block) => Object.fromEntries(Object.entries(blockData(b)).map(([k, v]) => [`data-${k}`, v]));
 
-export function SynTextView({ value, className, style, theme = "inherit", density, fallback = null, linkTarget = "_blank" }: SynTextViewProps) {
+export function SynTextView({ value, className, style, theme = "inherit", density, fallback = null, linkTarget = "_blank", fonts }: SynTextViewProps) {
   const doc = toDoc(value);
   if (!doc || !doc.blocks.some((b) => isAtom(b) || b.spans.some((s) => s.text.trim()))) return <>{fallback}</>;
   const markers = listMarkers(doc.blocks);
+  const used = fonts ? usedFonts(resolveFonts(fonts), doc.blocks) : [];
+  const faces = fontFaceCSS(used);
   return (
     <div className={cx("se-content", theme === "dark" && "se-dark", theme === "light" && "se-light", density === "comfortable" && "se-comfortable", className)} style={style}>
+      {fontStylesheets(used).map((href) => <link key={href} rel="stylesheet" href={href} />)}
+      {faces && <style>{faces}</style>}
       {doc.blocks.map((b, i) => <BlockView key={i} block={b} marker={markers[i]} target={linkTarget} />)}
     </div>
   );
