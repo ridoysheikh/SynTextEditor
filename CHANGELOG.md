@@ -8,6 +8,8 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-29
+
 ### Added
 
 - **Video thumbnails** — a video block has an optional `poster` (an image address). Choose it from the video's
@@ -68,5 +70,6 @@ The first release.
 - **Docs** — getting started, configuration, theming, customization, components, right-click menu, storage, API
   reference and the document model, in `docs/`.
 
-[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ridoysheikh/SynTextEditor/releases/tag/v0.1.0
