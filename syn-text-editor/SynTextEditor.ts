@@ -155,6 +155,20 @@ export interface SynTextEditorConfig {
   history?: number;
 }
 
+/** Where the caret is — see `SynTextEditor.getCaretContext()`. */
+export interface CaretContext {
+  /** Plain text of the caret's block (a paragraph, a list item, a heading, a table cell's paragraph). */
+  text: string;
+  /** Caret offset into `text`. */
+  index: number;
+  /** Index of the caret's block in the document (0 inside a table cell). */
+  block: number;
+  /** The caret's box relative to `container`'s scroll box — position a popup with `position: absolute` inside it. */
+  bounds: { top: number; left: number; height: number } | null;
+  /** The editor's scrolling box (`.se-scroll`; positioned). Null when it can't be found. */
+  container: HTMLElement | null;
+}
+
 export type EventName = "change" | "state" | "ui" | "focus" | "blur" | "ready" | "error" | "contextmenu";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Listener = (...args: any[]) => void;
@@ -338,6 +352,22 @@ export class SynTextEditor {
   isEmpty(): boolean { return isEmptyDoc(this.getDoc()); }
   getState(): EditorState | null { return this.engine?.getState() ?? null; }
   getSelection(): Sel | null { return this.engine?.getSelection() ?? null; }
+  /**
+   * The caret in the text it sits in, with its box — for inline completion (`[%{` pickers, @mentions, slash menus).
+   * Null when the editor isn't focused or an image / video / table is selected as a whole. Re-read it on the
+   * `state` event, which fires on every caret move and edit.
+   */
+  getCaretContext(): CaretContext | null {
+    const c = this.engine?.caretContext();
+    if (!c) return null;
+    const container = (this.engine!.surface.closest(".se-scroll") as HTMLElement | null) ?? null;
+    let bounds: CaretContext["bounds"] = null;
+    if (c.rect && container) {
+      const box = container.getBoundingClientRect();
+      bounds = { top: c.rect.top - box.top + container.scrollTop, left: c.rect.left - box.left + container.scrollLeft, height: c.rect.height };
+    }
+    return { text: c.text, index: c.index, block: c.block, bounds, container };
+  }
 
   // ── writing ──────────────────────────────────────────────────────────────
   /** Replace the content (no undo step). Accepts a document, its JSON, plain text, or null. */
@@ -376,6 +406,17 @@ export class SynTextEditor {
   setLink(href: string | undefined, text?: string) { this.engine?.setLink(href, text); }
   clearFormatting() { this.engine?.clearFormatting(); }
   insertText(text: string) { this.engine?.insertText(text); }
+  /**
+   * Replace characters `[from, to)` of a block with `text`, keep the replaced text's formatting, and put the caret
+   * after it. Offsets are those of `getCaretContext()`; `block` defaults to the caret's.
+   */
+  replaceRange(from: number, to: number, text: string, block?: number) { this.engine?.replaceRange(from, to, text, block); }
+  /**
+   * Highlight every occurrence of these phrases (case-insensitive), replacing earlier marks. A view of the text —
+   * never in the document, the HTML or undo. Style it with `--se-mark`. Returns the number of matches.
+   */
+  markPhrases(phrases: string[]): number { return this.engine?.markPhrases(phrases) ?? 0; }
+  clearMarks() { this.engine?.clearMarks(); }
   insertHTML(html: string) { this.engine?.insertHTML(html); }
   insertRule() { this.engine?.insertRule(); }
   insertTable(rows = 3, cols = 3, header = true) { this.engine?.insertTable(rows, cols, header); }

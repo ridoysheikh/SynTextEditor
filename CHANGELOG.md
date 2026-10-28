@@ -8,6 +8,16 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+### Added
+
+- **Caret context** — `editor.getCaretContext()` returns the text of the caret's block, the caret's offset into it
+  and its box relative to the editor's scroll box (`CaretContext`), and `editor.replaceRange(from, to, text, block?)`
+  swaps characters in that block, keeping their formatting. Together with the `state` event they are enough to
+  build `@mention` / `[%{token}` / slash-command completion outside the library.
+- **Phrase marks** — `editor.markPhrases(phrases)` underlines every occurrence of the phrases and returns the
+  count; `clearMarks()` removes them. Drawn with CSS Custom Highlights, so they are never part of the document, the
+  HTML or undo. Style with `--se-mark`.
+
 ## [0.2.0] - 2026-10-29
 
 ### Added

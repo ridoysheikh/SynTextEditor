@@ -176,6 +176,7 @@
 }
 .se-surface ::selection { background: var(--se-selection); }
 .se-surface::highlight(se-find) { background: var(--se-find); color: inherit; }
+.se-surface::highlight(se-mark) { background: var(--se-mark, rgba(224, 49, 49, .18)); text-decoration: underline wavy var(--se-danger); text-decoration-thickness: 1px; color: inherit; }
 
 /* ── Status bar ── */
 .se-statusbar {

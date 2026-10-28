@@ -9,7 +9,7 @@
  */
 import { clipboardHtml, parseHtml } from "../core/html";
 import {
-  BLOCK_SIZE, blockLength, clampSize, clampWidth, cleanBlock, docLength, docToPlain, docWords, emptyBlock, emptyDoc, isAtom,
+  BLOCK_SIZE, blockLength, blockText, clampSize, clampWidth, cleanBlock, docLength, docToPlain, docWords, emptyBlock, emptyDoc, isAtom,
   isEmptyDoc, marksOf, normaliseSpans, plainToBlocks,
   type Align, type Block, type ListKind, type Marks, type RichDoc, type Schema, type Span, type TextType, type Toggle,
 } from "../core/model";
@@ -118,7 +118,9 @@ export class RichEngine {
     this.render();
   }
 
-  destroy() { this.off.forEach((f) => f()); this.listeners.clear(); this.clearFind(); }
+  destroy() { this.off.forEach((f) => f()); this.listeners.clear(); this.clearFind(); this.marked = []; this.paintMarks(); }
+  /** The writing surface this engine runs on. */
+  get surface(): HTMLElement { return this.root; }
   setReadOnly(readOnly: boolean) {
     this.readOnly = readOnly;
     this.root.contentEditable = readOnly ? "false" : "true";
@@ -248,6 +250,7 @@ export class RichEngine {
     }
     if (this.readOnly) this.setReadOnly(true);
     this.root.toggleAttribute("data-empty", isEmptyDoc(this.doc) && blocks.length === 1);
+    if (this.marked.length) this.paintMarks();
     this.markAtom();
     if (this.hasFocus()) this.applySelection();
   }
@@ -714,6 +717,109 @@ export class RichEngine {
   /** Insert HTML at the caret, read into the model (and the schema) like a paste. */
   insertHTML(html: string) { this.insertFragment(parseHtml(html, this.opts.schema)); }
   insertBlocks(blocks: Block[]) { this.insertFragment(blocks.map((b) => cleanBlock(b, this.opts.schema)).filter((b): b is Block => !!b)); }
+
+  // ── caret context and range edits ────────────────────────────────────────
+  /**
+   * Where the caret is, for inline completion popups: the text of its block, the offset into it, and its box on
+   * screen (viewport px). Null when there is no caret in text (nothing focused yet, or an image is selected).
+   * Inside a table cell, the block is the cell's paragraph (`block` 0).
+   */
+  caretContext(): { block: number; index: number; text: string; rect: DOMRect | null } | null {
+    const { doc, sel } = this.view();
+    const at = sel.focus;
+    const blk = doc.blocks[at.b];
+    if (!blk || isAtom(blk) || (!this.focused && !this.hasFocus())) return null;
+    return { block: this.cell ? 0 : at.b, index: Math.min(at.o, blockLength(blk)), text: blockText(blk), rect: this.caretRect() };
+  }
+  /** The caret's box. A caret at a line's end or in an empty line has no rect of its own, so borrow a neighbour's edge. */
+  private caretRect(): DOMRect | null {
+    const s = window.getSelection();
+    if (!s?.rangeCount || !s.focusNode || !this.root.contains(s.focusNode)) return null;
+    const r = document.createRange();
+    r.setStart(s.focusNode, s.focusOffset);
+    r.collapse(true);
+    const own = Array.from(r.getClientRects()).find((x) => x.height > 0);
+    if (own) return own;
+    const n = s.focusNode;
+    if (n.nodeType === Node.TEXT_NODE) {
+      const len = (n as Text).length;
+      const edge = (a: number, z: number, side: "left" | "right") => {
+        const e = document.createRange();
+        e.setStart(n, a);
+        e.setEnd(n, z);
+        const box = Array.from(e.getClientRects()).filter((x) => x.height > 0).pop();
+        return box ? new DOMRect(side === "right" ? box.right : box.left, box.top, 0, box.height) : null;
+      };
+      if (s.focusOffset > 0) { const b = edge(s.focusOffset - 1, s.focusOffset, "right"); if (b) return b; }
+      if (s.focusOffset < len) { const b = edge(s.focusOffset, s.focusOffset + 1, "left"); if (b) return b; }
+    }
+    const el = n instanceof HTMLElement ? n : n.parentElement;
+    return el ? el.getBoundingClientRect() : null;
+  }
+  /**
+   * Replace characters `[from, to)` of a block with `text`, keeping the formatting of the text they replace, and
+   * leave the caret after it. `block` defaults to the caret's block (offsets as `caretContext` reports them).
+   */
+  replaceRange(from: number, to: number, text: string, block?: number) {
+    if (this.readOnly) return;
+    const { doc, sel } = this.view();
+    const b = block ?? sel.focus.b;
+    const blk = doc.blocks[b];
+    if (!blk || isAtom(blk)) return;
+    const len = blockLength(blk);
+    const a = Math.max(0, Math.min(len, Math.min(from, to)));
+    const z = Math.max(0, Math.min(len, Math.max(from, to)));
+    const marks = ops.marksAt(doc, { b, o: z > a ? a + 1 : a });
+    const cut = ops.deleteRange(doc, { b, o: a }, { b, o: z });
+    const r = ops.insertText(cut.doc, cut.pos, text.replace(/\r\n?/g, "\n"), marks);
+    this.stored = null;
+    this.focus();
+    this.put(r.doc, caret(r.pos), "other");
+    this.focus();
+  }
+
+  // ── marks: a view of the text, never part of the document ────────────────
+  private marked: string[] = [];
+  private static markRanges = new Map<RichEngine, Range[]>();
+  /**
+   * Highlight every occurrence of these phrases (case-insensitive) — a spam check, a style checker. Drawn with CSS
+   * Custom Highlights, so nothing enters the document: `getHTML()`, `getValue()` and undo never see them. Returns
+   * the number of matches; browsers without the Highlight API still count but draw nothing.
+   */
+  markPhrases(phrases: string[]): number {
+    this.marked = Array.from(new Set(phrases.map((p) => p.trim()).filter((p) => p.length >= 2)));
+    return this.paintMarks();
+  }
+  clearMarks() { this.marked = []; this.paintMarks(); }
+  private paintMarks(): number {
+    const ranges: Range[] = [];
+    let count = 0;
+    if (this.marked.length) {
+      for (const q of this.marked) {
+        for (const [a, z] of ops.findAll(this.doc, q, false)) {
+          count++;
+          if (!hasHighlights()) continue;
+          const s = domFromPos(this.root, a);
+          const e = domFromPos(this.root, z);
+          if (!s || !e) continue;
+          const r = document.createRange();
+          r.setStart(s[0], s[1]);
+          r.setEnd(e[0], e[1]);
+          ranges.push(r);
+        }
+      }
+    }
+    if (ranges.length) RichEngine.markRanges.set(this, ranges); else RichEngine.markRanges.delete(this);
+    if (hasHighlights()) {
+      const all = Array.from(RichEngine.markRanges.values()).flat();
+      const reg = (CSS as unknown as { highlights: Map<string, unknown> }).highlights;
+      if (all.length) {
+        const H = (globalThis as unknown as { Highlight: new (...r: Range[]) => unknown }).Highlight;
+        reg.set("se-mark", new H(...all));
+      } else reg.delete("se-mark");
+    }
+    return count;
+  }
 
   // ── find & replace ───────────────────────────────────────────────────────
   private findQuery: { q: string; cs: boolean } | null = null;

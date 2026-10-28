@@ -33,6 +33,7 @@
 | `isEmpty()` | `boolean` |
 | `getState()` | [`EditorState`](#editorstate) `\| null` (null until mounted) |
 | `getSelection()` | `{ anchor, focus }` positions `{ b: blockIndex, o: offset }` |
+| `getCaretContext()` | `CaretContext \| null` — the caret's block text, offset and box, for [inline completion](#inline-completion-and-marks) |
 | `isReady()` | the editor is on screen |
 | `isReadOnly()` | `boolean` |
 
@@ -64,6 +65,8 @@ Each acts on the selection, or — with a bare caret — on what's typed next.
 | `setLink(href, text?)` | `undefined` removes; with a bare caret, inserts `text` (or the address) as a link |
 | `clearFormatting()` | |
 | `insertText(text)` | at the caret, replacing the selection |
+| `replaceRange(from, to, text, block?)` | replace characters `[from, to)` of a block (default: the caret's), keep their formatting, caret after |
+| `markPhrases(phrases)` / `clearMarks()` | highlight phrases without touching the document — see [marks](#inline-completion-and-marks) |
 | `insertHTML(html)` | read into the model and the editor's formats, like a paste |
 | `insertRule()` | |
 | `insertTable(rows = 3, cols = 3, header = true)` | the caret goes into the first cell |
@@ -131,6 +134,38 @@ editor.once("ready", () => editor.focus());
 | `ready` | — | the editor mounted |
 | `error` | `Error` | a file was refused, an upload / storage call failed, or the clipboard couldn't be read |
 | `contextmenu` | `ContextMenuContext` | the right-click menu opened |
+
+### Inline completion and marks
+
+For `@mention` or `[%{token}` pickers and checkers that point at wording, without a plugin system.
+
+```tsx
+const [ctx, setCtx] = useState<CaretContext | null>(null);
+useEffect(() => editor.on("state", () => setCtx(editor.getCaretContext())), [editor]);
+
+// the text before the caret decides whether a popup shows
+const before = ctx?.text.slice(0, ctx.index) ?? "";
+const trigger = /\[%\{([\w.]*)$/.exec(before);
+
+// pick an item: swap the typed trigger for the real thing
+if (ctx && trigger) editor.replaceRange(ctx.index - trigger[0].length, ctx.index, "[%{deal.name}]");
+
+// place the popup: inside ctx.container (the editor's positioned scroll box), at ctx.bounds
+<div style={{ position: "absolute", top: ctx.bounds.top + ctx.bounds.height, left: ctx.bounds.left }} />
+```
+
+| `CaretContext` | |
+|---|---|
+| `text` | plain text of the caret's block (a paragraph, list item, heading or table cell) |
+| `index` | the caret's offset into `text` |
+| `block` | the block's index in the document (0 inside a table cell) |
+| `bounds` | `{ top, left, height }` relative to `container`'s scroll box, or null |
+| `container` | the editor's scroll box (`.se-scroll`, positioned) — put the popup inside it |
+
+`markPhrases(["act now", "guaranteed"])` underlines every occurrence (case-insensitive) with the browser's CSS
+Custom Highlight API and returns how many it found. Marks are a *view*: they are not in `getHTML()`, `getValue()` or
+undo, and they follow edits. `clearMarks()` removes them. Colour with `--se-mark`. Browsers without the Highlight
+API count matches but draw nothing.
 
 ### Other members
 
