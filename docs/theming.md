@@ -310,9 +310,9 @@ want different. `--se-ui-size` (above) is the base text of the toolbar, menus an
 
 **Documents** (editor and viewer): `--se-content-size` (paragraph, `15px`), `--se-h1-size` … `--se-h4-size`
 (`30` / `24` / `19` / `16px`), `--se-h1-weight` … `--se-h4-weight`, `--se-code-size` (`13px`), `--se-table-size`
-(`14px`), `--se-file-size` (`13.5px`, file links). The size box in the toolbar still shows the original block sizes
-(`BLOCK_SIZE`) for a heading, because an explicit size is stored in px against them; that only matters if you also use
-the size tool on a heading.
+(`14px`), `--se-file-size` (`13.5px`, file links). The size box, the − / + steppers and the "Default (n)" menu item
+read these variables, so they always agree with what is drawn (a size equal to the block's own is not stored).
+Documents saved with an explicit px size keep it.
 
 ### Shape and dialog chrome
 

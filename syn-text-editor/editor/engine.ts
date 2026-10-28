@@ -127,6 +127,15 @@ export class RichEngine {
     this.root.querySelectorAll<HTMLElement>("td[data-r],th[data-r]").forEach((td) => { td.contentEditable = readOnly ? "false" : "true"; });
   }
   get isReadOnly() { return this.readOnly; }
+  /**
+   * The size a block's text is drawn at when no size is set on it. The stylesheet decides (`--se-content-size`,
+   * `--se-h1-size`…), so a host that changes them gets a size box and steppers that agree with the page.
+   */
+  baseSize: ops.BaseSize = (type) => {
+    const v = { h1: "--se-h1-size", h2: "--se-h2-size", h3: "--se-h3-size", h4: "--se-h4-size", code: "--se-code-size" }[type as string] ?? "--se-content-size";
+    const px = parseFloat(getComputedStyle(this.root).getPropertyValue(v));
+    return Number.isFinite(px) && px > 0 ? Math.round(px * 2) / 2 : BLOCK_SIZE[type as keyof typeof BLOCK_SIZE] ?? BLOCK_SIZE.p;
+  };
   /** The element drawing block `b` (an image's figure, a video's player…). */
   elementOf(b: number): HTMLElement | undefined { return this.root.children[b] as HTMLElement | undefined; }
   /** What the editor allows from now on (typing, paste, shortcuts). */
@@ -164,7 +173,7 @@ export class RichEngine {
     const [from, to] = ordered(sel);
     const lr = isCollapsed(sel) ? ops.linkRange(doc, from) : null;
     return {
-      active: ops.activeIn(doc, from, to, isCollapsed(sel) ? this.stored : null),
+      active: ops.activeIn(doc, from, to, isCollapsed(sel) ? this.stored : null, this.baseSize),
       canUndo: this.undoStack.length > 0, canRedo: this.redoStack.length > 0, painting: !!this.painter,
       link: lr ? ops.marksAt(doc, { b: lr[0].b, o: lr[0].o + 1 }).link ?? null : ops.activeIn(doc, from, to, null).marks.link ?? null,
       length: docLength(this.doc), words: docWords(this.doc),
@@ -545,18 +554,18 @@ export class RichEngine {
   /** An exact size in px; `refocus: false` while it's being typed in the size box. */
   setSize(px: number | null, refocus = true) {
     const { doc, sel } = this.view();
-    const base = BLOCK_SIZE[doc.blocks[ordered(sel)[0].b]?.type ?? "p"];
+    const base = this.baseSize(doc.blocks[ordered(sel)[0].b]?.type ?? "p");
     const size = px === null ? null : clampSize(px);
     this.marks((d, a, z) => ops.mapSpans(d, a, z, (s, b) => {
       const n: Span = { ...s };
-      if (size === null || size === BLOCK_SIZE[b.type]) delete n.size; else n.size = size;
+      if (size === null || size === this.baseSize(b.type)) delete n.size; else n.size = size;
       return n;
     }), (m) => { if (size === null || size === base) delete m.size; else m.size = size; return m; }, "size", refocus);
   }
   stepSize(delta: number) {
     const { doc, sel } = this.view();
-    const base = BLOCK_SIZE[doc.blocks[ordered(sel)[0].b]?.type ?? "p"];
-    this.marks((d, a, z) => ops.stepSize(d, a, z, delta), (m) => {
+    const base = this.baseSize(doc.blocks[ordered(sel)[0].b]?.type ?? "p");
+    this.marks((d, a, z) => ops.stepSize(d, a, z, delta, this.baseSize), (m) => {
       const size = clampSize((m.size ?? base) + delta);
       if (size === base) delete m.size; else m.size = size;
       return m;
@@ -693,8 +702,8 @@ export class RichEngine {
     const b = doc.blocks[from.b];
     const m = marksOf(cmp(from, to) ? ops.activeIn(doc, from, to, null).marks : ops.marksAt(doc, from));
     delete m.link;
-    const size = ops.activeIn(doc, from, to, null).size;
-    if (size && size !== BLOCK_SIZE[b.type]) m.size = size;
+    const size = ops.activeIn(doc, from, to, null, this.baseSize).size;
+    if (size && size !== this.baseSize(b.type)) m.size = size;
     this.painter = { marks: m, block: { type: isAtom(b) ? "p" : b.type, align: b.align, list: b.list, indent: b.indent } };
     this.notify();
   }

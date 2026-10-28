@@ -8,6 +8,12 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+### Fixed
+
+- The size box, steppers and "Default" menu item use the sizes the stylesheet draws (`--se-content-size`,
+  `--se-h1-size`…) instead of the built-in ones, so changing those variables no longer leaves the toolbar showing
+  stale numbers (and stepping from a heading no longer jumps).
+
 ## [0.6.0] - 2026-10-29
 
 ### Added

@@ -234,7 +234,11 @@ export interface Active {
   list: ListKind | null | "mixed";
 }
 /** What the toolbar shows for a range. */
-export function activeIn(d: RichDoc, from: Pos, to: Pos, stored: Marks | null): Active {
+/** The size a block draws its text at when no size is set on the text — `BLOCK_SIZE`, or the host's own (see `--se-h1-size`…). */
+export type BaseSize = (type: Block["type"]) => number;
+const builtInBase: BaseSize = (t) => BLOCK_SIZE[t as keyof typeof BLOCK_SIZE] ?? BLOCK_SIZE.p;
+
+export function activeIn(d: RichDoc, from: Pos, to: Pos, stored: Marks | null, base: BaseSize = builtInBase): Active {
   const blocks = d.blocks.slice(from.b, to.b + 1).filter((b) => !isAtom(b));
   const one = <T,>(vals: T[]) => (vals.every((v) => v === vals[0]) ? vals[0] : null);
   const block = (one(blocks.map((b) => b.type)) ?? null) as TextType | null;
@@ -243,11 +247,11 @@ export function activeIn(d: RichDoc, from: Pos, to: Pos, stored: Marks | null): 
   const list = lists.every((l) => l === lists[0]) ? lists[0] ?? null : "mixed";
   if (cmp(from, to) === 0) {
     const m = stored ?? marksAt(d, from);
-    return { marks: m, size: m.size ?? BLOCK_SIZE[d.blocks[from.b]?.type ?? "p"], block, align, list };
+    return { marks: m, size: m.size ?? base(d.blocks[from.b]?.type ?? "p"), block, align, list };
   }
   const runs: { m: Marks; size: number }[] = [];
-  mapSpans(d, from, to, (s, b) => { runs.push({ m: marksOf(s), size: s.size ?? BLOCK_SIZE[b.type] }); return s; });
-  if (!runs.length) return { marks: {}, size: BLOCK_SIZE[block ?? "p"], block, align, list };
+  mapSpans(d, from, to, (s, b) => { runs.push({ m: marksOf(s), size: s.size ?? base(b.type) }); return s; });
+  if (!runs.length) return { marks: {}, size: base(block ?? "p"), block, align, list };
   const marks: Marks = {};
   for (const k of ["bold", "italic", "underline", "strike", "code", "script", "font", "color", "highlight", "link"] as const) {
     const v = one(runs.map((r) => r.m[k]));
@@ -272,11 +276,11 @@ export function setMark<K extends MarkKey>(d: RichDoc, from: Pos, to: Pos, key: 
   });
 }
 /** Bigger / smaller by `delta` px from each run's own size (mixed sizes keep their differences). */
-export function stepSize(d: RichDoc, from: Pos, to: Pos, delta: number): RichDoc {
+export function stepSize(d: RichDoc, from: Pos, to: Pos, delta: number, base: BaseSize = builtInBase): RichDoc {
   return mapSpans(d, from, to, (s, b) => {
-    const size = clampSize((s.size ?? BLOCK_SIZE[b.type]) + delta);
+    const size = clampSize((s.size ?? base(b.type)) + delta);
     const n: Span = { ...s, size };
-    if (size === BLOCK_SIZE[b.type]) delete n.size;
+    if (size === base(b.type)) delete n.size;
     return n;
   });
 }

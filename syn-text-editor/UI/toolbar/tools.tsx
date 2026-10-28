@@ -148,7 +148,7 @@ export function SizeTool({ editor }: ToolProps) {
       <PopoverButton label="Sizes" icon={<ChevronDown className="se-caret" />} disabled={off} buttonClassName="se-btn-narrow" style={{ minWidth: 18, padding: 0 }}>
         {(close) => (
           <>
-            <MenuItem checked={false} onSelect={() => { close(); editor.setSize(null); }}>Default ({BLOCK_SIZE[state?.active.block ?? "p"]})</MenuItem>
+            <MenuItem checked={false} onSelect={() => { close(); editor.setSize(null); }}>Default ({editor.engine?.baseSize(state?.active.block ?? "p") ?? BLOCK_SIZE[state?.active.block ?? "p"]})</MenuItem>
             <MenuSeparator />
             {sizes.map((s) => <MenuItem key={s} checked={size === s} onSelect={() => { close(); editor.setSize(s); }}>{s}</MenuItem>)}
           </>
