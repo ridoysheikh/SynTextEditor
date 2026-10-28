@@ -8,6 +8,8 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-29
+
 ### Fixed
 
 - Icons inside a replacement `Button` (`components.Button`) were drawn at the icon library's default 24px — the
@@ -162,7 +164,8 @@ The first release.
 - **Docs** — getting started, configuration, theming, customization, components, right-click menu, storage, API
   reference and the document model, in `docs/`.
 
-[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.5.0...v0.6.0
