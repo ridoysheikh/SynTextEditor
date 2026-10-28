@@ -11,6 +11,7 @@ import type { AssetKind } from "../core/storage";
 import type { Swatch } from "../core/styles";
 import type { ToolbarLayout } from "../presets";
 import type { SynTextEditor } from "../SynTextEditor";
+import type { VideoPlayerProps } from "../view/VideoPlayer";
 
 /** A replacement: the slot's props plus `Default`, the library's component for that slot. */
 export type Replacement<P> = ComponentType<P & { Default: ComponentType<P> }>;
@@ -95,6 +96,8 @@ export interface MediaGalleryProps extends DialogProps {
   filter?: AssetKind;
   /** The block index of a media block whose file is being swapped. */
   replace?: number;
+  /** Choosing an image as the thumbnail of the video at this index. */
+  thumbnailFor?: number;
 }
 export interface ColorMenuProps {
   kind: "color" | "highlight";
@@ -123,6 +126,8 @@ export interface SynComponents {
   Divider: Replacement<object>;
   ColorPicker: Replacement<ColorPickerProps>;
   ColorMenu: Replacement<ColorMenuProps>;
+  /** The video player of the viewer and of the video details dialog (the writing area's own is a DOM player: style it with `--se-player-*`). */
+  VideoPlayer: Replacement<VideoPlayerProps>;
 
   Toolbar: Replacement<ToolbarProps>;
   FindBar: Replacement<EditorPartProps>;
@@ -144,6 +149,6 @@ export type ComponentsConfig = Partial<SynComponents>;
 export type SlotName = Exclude<keyof SynComponents, "tools">;
 export const SLOT_NAMES: readonly SlotName[] = [
   "Button", "ToolButton", "Popover", "Modal", "MenuItem", "MenuSeparator", "MenuLabel", "Field", "Slider", "Tooltip",
-  "Divider", "ColorPicker", "ColorMenu", "Toolbar", "FindBar", "StatusBar", "FloatBar", "ContextMenu", "MediaGallery",
+  "Divider", "ColorPicker", "ColorMenu", "VideoPlayer", "Toolbar", "FindBar", "StatusBar", "FloatBar", "ContextMenu", "MediaGallery",
   "LinkDialog", "MediaDetailsDialog", "PreviewDialog",
 ];

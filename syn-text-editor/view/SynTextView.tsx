@@ -3,7 +3,8 @@
 // never as HTML, so nothing in a document can inject markup. No hooks and no browser APIs: it renders in a React
 // Server Component as happily as in the browser.
 
-import { createElement, type CSSProperties, type ReactNode } from "react";
+import { createElement, type ComponentType, type CSSProperties, type ReactNode } from "react";
+import { VideoPlayer, type VideoPlayerProps } from "./VideoPlayer";
 import { isAtom, toDoc, type Block, type Cell, type RichDoc, type Span } from "../core/model";
 import { blockClass, blockData, fontFaceCSS, fontStylesheets, formatBytes, listMarkers, resolveFonts, spanClass, spanStyle, usedFonts, type FontsConfig } from "../core/styles";
 
@@ -22,12 +23,17 @@ export interface SynTextViewProps {
   linkTarget?: "_blank" | "_self";
   /** The editor's `fonts` option: the faces this document uses that have a `src` are loaded with it. */
   fonts?: FontsConfig;
+  /**
+   * Your own parts — the same `components` as the editor's (only `VideoPlayer` is used here). A replacement gets
+   * the props plus `Default`, the library's player.
+   */
+  components?: { VideoPlayer?: ComponentType<VideoPlayerProps & { Default: ComponentType<VideoPlayerProps> }> };
 }
 
 const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
 const dataProps = (b: Block) => Object.fromEntries(Object.entries(blockData(b)).map(([k, v]) => [`data-${k}`, v]));
 
-export function SynTextView({ value, className, style, theme = "inherit", density, fallback = null, linkTarget = "_blank", fonts }: SynTextViewProps) {
+export function SynTextView({ value, className, style, theme = "inherit", density, fallback = null, linkTarget = "_blank", fonts, components }: SynTextViewProps) {
   const doc = toDoc(value);
   if (!doc || !doc.blocks.some((b) => isAtom(b) || b.spans.some((s) => s.text.trim()))) return <>{fallback}</>;
   const markers = listMarkers(doc.blocks);
@@ -37,12 +43,14 @@ export function SynTextView({ value, className, style, theme = "inherit", densit
     <div className={cx("se-content", theme === "dark" && "se-dark", theme === "light" && "se-light", density === "comfortable" && "se-comfortable", className)} style={style}>
       {fontStylesheets(used).map((href) => <link key={href} rel="stylesheet" href={href} />)}
       {faces && <style>{faces}</style>}
-      {doc.blocks.map((b, i) => <BlockView key={i} block={b} marker={markers[i]} target={linkTarget} />)}
+      {doc.blocks.map((b, i) => <BlockView key={i} block={b} marker={markers[i]} target={linkTarget} player={components?.VideoPlayer} />)}
     </div>
   );
 }
 
-function BlockView({ block: b, marker, target }: { block: Block; marker: string | null; target: string }) {
+type PlayerSlot = NonNullable<SynTextViewProps["components"]>["VideoPlayer"];
+
+function BlockView({ block: b, marker, target, player: Player }: { block: Block; marker: string | null; target: string; player?: PlayerSlot }) {
   const cls = blockClass(b);
   const data = dataProps(b);
   switch (b.type) {
@@ -51,7 +59,9 @@ function BlockView({ block: b, marker, target }: { block: Block; marker: string 
     case "video": {
       const media = b.type === "image"
         ? <img src={b.src} alt={b.alt ?? ""} loading="lazy" decoding="async" />
-        : <video src={b.src} controls preload="metadata" />;
+        : Player
+          ? <Player src={b.src ?? ""} poster={b.poster} label={b.caption} Default={VideoPlayer} />
+          : <VideoPlayer src={b.src ?? ""} poster={b.poster} label={b.caption} />;
       return (
         <div className={cls} {...data}>
           <figure className="se-figure" style={b.width ? { width: `${b.width}%` } : undefined}>

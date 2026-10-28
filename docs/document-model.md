@@ -18,7 +18,7 @@ Every block has a `type` and `spans` (empty for blocks that aren't text).
 | `code` | code block (line breaks are `\n` in the text) | |
 | `hr` | horizontal rule | |
 | `image` | image | `src`, `alt?`, `caption?`, `width?` (10–99, % of the content width; absent = 100), `align?` (`"left"`, `"right"`; absent = centred), `asset?` |
-| `video` | video | `src`, `caption?`, `width?`, `align?`, `asset?` |
+| `video` | video | `src`, `poster?` (thumbnail, an image address), `caption?`, `width?`, `align?`, `asset?` |
 | `file` | attachment | `src`, `name?`, `mime?`, `bytes?`, `asset?` |
 | `table` | table | `rows: Cell[][]`, `head?: true` (first row is a header) |
 

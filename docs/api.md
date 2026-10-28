@@ -68,7 +68,11 @@ Each acts on the selection, or — with a bare caret — on what's typed next.
 | `insertRule()` | |
 | `insertTable(rows = 3, cols = 3, header = true)` | the caret goes into the first cell |
 | `insertImage(src, { alt?, caption?, width? })` | `width` in percent |
-| `insertVideo(src, { caption?, width? })` | |
+| `insertVideo(src, { caption?, width?, poster? })` | `poster`: the [thumbnail](video.md#thumbnails) |
+| `setVideoThumbnail(index, src \| null)` | set or remove a video's thumbnail |
+| `captureThumbnail(index)` | the frame the video shows now → upload → thumbnail; resolves `true` when it worked |
+| `uploadThumbnail(file)` | store an image through storage (or inline); resolves its address, or `null` |
+| `openThumbnailLibrary(index)` | the library, to pick an image as the thumbnail |
 | `insertFile(src, { name?, bytes?, mime? })` | |
 | `insertAsset(asset)` | an `Asset` from your storage |
 | `selectAll()` | |
@@ -145,6 +149,7 @@ editor.once("ready", () => editor.focus());
 | `blockFromAsset(asset)` | the block an asset would insert as |
 | `createRestStorage(options)` / `createMemoryStorage(options)` | [storage](storage.md) helpers; `kindOf(mime)` |
 | `PRESETS`, `TOOL_FORMAT`, `toolAllowed(editor, id)` | presets and the tool → format map |
+| `mountPlayer(el, opts?)` · `mountPlayers(scope?, opts?)` · `captureFrame(video)` · `formatTime(s)` | the [player](video.md#for-html-from-tohtml)'s DOM functions (main entry only) |
 | `LIVE_OPTIONS` | the option names `setOptions` and the hook keep live |
 | `defaultContextItems(ctx)`, `resolveContextItems(ctx)`, `tidyContextItems(rows)`, `pasteFromClipboard(editor, plain?)`, `CONTEXT_ITEM_IDS` | the [right-click menu](context-menu.md)'s rows |
 | `<ContextMenu editor />` | the menu itself (mounted by `render()`) |
@@ -186,6 +191,7 @@ From `@syntext/react/view` (and the main entry).
 | `fallback` | `ReactNode` | `null` | shown for an empty document |
 | `linkTarget` | `"_blank" \| "_self"` | `"_blank"` | links get `rel="noopener noreferrer nofollow"` |
 | `fonts` | `FontOption[] \| { add }` | — | the editor's `fonts`: faces the document uses that have a `src` are loaded |
+| `components` | `{ VideoPlayer? }` | — | your own [video player](video.md#making-it-yours); gets `Default` |
 
 ### Functions
 
@@ -197,6 +203,7 @@ From `@syntext/react/view` (and the main entry).
 | `schemaOf(formats)` | a schema from a list of formats |
 | `docToPlain(doc)` (alias `toPlainText`) · `docLength(doc)` · `docWords(doc)` · `isEmptyDoc(doc)` | |
 | `safeLink(href)` · `safeSrc(src)` | the URL checks the model uses |
+| `VideoPlayer` · `safePoster(src)` | the [video player](video.md) (a client component) · the thumbnail address check |
 | `colorValue(name, "color" \| "highlight", inline?)` | a palette name → CSS value |
 | `resolveFonts(fonts)` · `fontFaceCSS(fonts)` · `fontStylesheets(fonts)` · `usedFonts(fonts, blocks)` · `loadFonts(fonts)` · `fontFamily(value)` | [custom fonts](customization.md#custom-fonts) |
 | `COLORS` `HIGHLIGHTS` `FONTS` `SIZES` `BLOCK_SIZE` `BLOCK_LABEL` `ALL_FORMATS` | defaults and constants |

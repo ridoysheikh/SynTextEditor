@@ -7,7 +7,7 @@ import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { createElement } from "react";
 import { toHTML, type HtmlOptions } from "./core/html";
 import {
-  docLength, docToPlain, docWords, emptyDoc, isEmptyDoc, schemaOf, toDoc,
+  docLength, docToPlain, docWords, emptyDoc, isEmptyDoc, safePoster, schemaOf, toDoc,
   type Align, type Block, type Format, type ListKind, type RichDoc, type Schema, type TextType, type Toggle,
 } from "./core/model";
 import type { Sel } from "./core/ops";
@@ -16,6 +16,7 @@ import { createRestStorage, kindOf, type Asset, type AssetKind, type RestStorage
 import type { ComponentsConfig } from "./UI/slots";
 import { COLORS, HIGHLIGHTS, SIZES, loadFonts, resolveFonts, type FontOption, type FontsConfig, type Swatch } from "./core/styles";
 import { RichEngine, type EditorState } from "./editor/engine";
+import { captureFrame } from "./view/player";
 import type { ContextItemId } from "./contextMenu";
 import { PRESETS, type PresetName, type ToolbarLayout } from "./presets";
 
@@ -159,7 +160,7 @@ export type EventName = "change" | "state" | "ui" | "focus" | "blur" | "ready" |
 type Listener = (...args: any[]) => void;
 
 export type Modal =
-  | { kind: "gallery"; filter?: AssetKind; replace?: number }
+  | { kind: "gallery"; filter?: AssetKind; replace?: number; /** picking a thumbnail for the video at this index */ thumbnailFor?: number }
   | { kind: "link" }
   | { kind: "media"; index: number }
   | { kind: "preview" };
@@ -188,7 +189,10 @@ export type LiveOptions = Pick<SynTextEditorConfig, (typeof LIVE_OPTIONS)[number
 /** A stored file → the block that shows it. */
 export function blockFromAsset(a: Asset, kind: AssetKind = kindOf(a.type)): Block {
   if (kind === "image") return { type: "image", src: a.url, alt: a.name.replace(/\.[a-z0-9]+$/i, ""), asset: a.id, spans: [] };
-  if (kind === "video") return { type: "video", src: a.url, asset: a.id, spans: [] };
+  if (kind === "video") {
+    const poster = safePoster(a.thumbnail);
+    return { type: "video", src: a.url, asset: a.id, ...(poster ? { poster } : {}), spans: [] };
+  }
   return { type: "file", src: a.url, name: a.name, mime: a.type, ...(a.size !== undefined ? { bytes: a.size } : {}), asset: a.id, spans: [] };
 }
 
@@ -376,7 +380,46 @@ export class SynTextEditor {
   insertRule() { this.engine?.insertRule(); }
   insertTable(rows = 3, cols = 3, header = true) { this.engine?.insertTable(rows, cols, header); }
   insertImage(src: string, opts: { alt?: string; caption?: string; width?: number } = {}) { this.engine?.insertAtom({ type: "image", src, ...opts, spans: [] }); }
-  insertVideo(src: string, opts: { caption?: string; width?: number } = {}) { this.engine?.insertAtom({ type: "video", src, ...opts, spans: [] }); }
+  insertVideo(src: string, opts: { caption?: string; width?: number; poster?: string } = {}) {
+    const poster = safePoster(opts.poster);
+    this.engine?.insertAtom({ type: "video", src, ...opts, poster, spans: [] });
+  }
+
+  // ── video thumbnails ─────────────────────────────────────────────────────
+  /** Set (an image address) or clear (null) the thumbnail of the video at `index`. */
+  setVideoThumbnail(index: number, src: string | null) {
+    if (this.getDoc().blocks[index]?.type !== "video") return;
+    const poster = src === null ? undefined : safePoster(src);
+    if (src !== null && !poster) { this.fail(new Error("That address can't be used as a thumbnail")); return; }
+    this.engine?.updateAtom({ poster }, index);
+  }
+  /**
+   * Store an image for use as a thumbnail — through storage, or inline when there's none and it's small enough —
+   * and return its address (null if it was refused or failed; the reason goes to `onError`).
+   */
+  async uploadThumbnail(file: File): Promise<string | null> {
+    const [asset] = await this.uploadFiles([file], null, false, { thumbnail: true });
+    return asset ? safePoster(asset.thumbnail ?? asset.url) ?? null : null;
+  }
+  /**
+   * Make the frame the video at `index` shows now (in the editor) its thumbnail. Resolves true when it worked;
+   * a video from a server that doesn't allow it (CORS) reports why through `onError`.
+   */
+  async captureThumbnail(index: number, video?: HTMLVideoElement | null): Promise<boolean> {
+    const el = video ?? this.engine?.elementOf(index)?.querySelector("video");
+    if (!el) return false;
+    try {
+      const blob = await captureFrame(el);
+      const name = `thumbnail-${Math.round(el.currentTime * 10) / 10}s.jpg`;
+      const src = await this.uploadThumbnail(new File([blob], name, { type: blob.type || "image/jpeg" }));
+      if (!src) return false;
+      this.setVideoThumbnail(index, src);
+      return true;
+    } catch (e) {
+      this.fail(e as Error);
+      return false;
+    }
+  }
   insertFile(src: string, opts: { name?: string; bytes?: number; mime?: string } = {}) { this.engine?.insertAtom({ type: "file", src, ...opts, spans: [] }); }
   insertAsset(a: Asset) { this.engine?.insertAtom(blockFromAsset(a)); }
   selectAll() { this.engine?.selectAll(); }
@@ -388,6 +431,8 @@ export class SynTextEditor {
   openGallery(filter?: AssetKind, replace?: number) { this.setUI({ modal: { kind: "gallery", filter, replace } }); }
   openLink() { this.setUI({ modal: { kind: "link" } }); }
   openMediaDetails(index: number) { this.setUI({ modal: { kind: "media", index } }); }
+  /** The media library, to choose an image as the thumbnail of the video at `index`. */
+  openThumbnailLibrary(index: number) { this.setUI({ modal: { kind: "gallery", filter: "image", thumbnailFor: index } }); }
   openPreview() { this.setUI({ modal: { kind: "preview" } }); }
   closeModal() { this.setUI({ modal: null }); requestAnimationFrame(() => this.engine?.focus()); }
   toggleFind(open = !this.ui.find) { this.setUI({ find: open }); if (!open) { this.engine?.clearFind(); this.engine?.focus(); } }
@@ -435,11 +480,12 @@ export class SynTextEditor {
     return { accept: u.accept ?? DEFAULT_ACCEPT, maxSize: u.maxSize ?? 25 * 1024 * 1024, inlineLimit: u.inlineLimit ?? 1024 * 1024 };
   }
   /** Whether a file of this kind may go into the document at all. */
-  accepts(file: File): string | null {
+  accepts(file: File, { thumbnail = false }: { thumbnail?: boolean } = {}): string | null {
     const kind = kindOf(file.type);
-    if (!this.schema.has(kind)) return `${kind === "file" ? "Files" : kind === "image" ? "Images" : "Videos"} aren't allowed here`;
+    if (thumbnail) { if (kind !== "image") return `${file.name}: a thumbnail must be an image`; }      // not in the document's formats
+    else if (!this.schema.has(kind)) return `${kind === "file" ? "Files" : kind === "image" ? "Images" : "Videos"} aren't allowed here`;
     const { accept, maxSize, inlineLimit } = this.uploadConfig;
-    const ok = accept.split(",").map((s) => s.trim().toLowerCase()).some((a) =>
+    const ok = thumbnail || accept.split(",").map((s) => s.trim().toLowerCase()).some((a) =>
       a === "*" || a === "*/*" || (a.endsWith("/*") ? file.type.startsWith(a.slice(0, -1)) : a.startsWith(".") ? file.name.toLowerCase().endsWith(a) : file.type === a));
     if (!ok) return `${file.name}: this type of file isn't accepted`;
     if (file.size > maxSize) return `${file.name} is larger than ${Math.round(maxSize / 1024 / 1024)} MB`;
@@ -453,11 +499,11 @@ export class SynTextEditor {
    * Upload files and return what was stored. With `insert`, each goes into the document as it arrives —
    * after `near` when given (the block they were dropped on), else at the caret.
    */
-  async uploadFiles(files: File[], near: Block | null = null, insert = true): Promise<Asset[]> {
+  async uploadFiles(files: File[], near: Block | null = null, insert = true, { thumbnail = false }: { thumbnail?: boolean } = {}): Promise<Asset[]> {
     const done: Asset[] = [];
     await Promise.all(files.map(async (file) => {
       const id = Math.random().toString(36).slice(2);
-      const problem = this.accepts(file);
+      const problem = this.accepts(file, { thumbnail });
       if (problem) { this.fail(new Error(problem)); return; }
       this.setUI({ uploads: [...this.ui.uploads, { id, name: file.name, progress: 0 }] });
       const progress = (p: number) => this.setUI({ uploads: this.ui.uploads.map((u) => (u.id === id ? { ...u, progress: p } : u)) });

@@ -49,7 +49,10 @@ export default defineConfig({
       output: {
         assetFileNames: 'index.css',
         // The editor entry is client code for Next.js' App Router; the view entry must not be.
-        banner: (chunk) => (chunk.isEntry && chunk.name === 'index' ? '"use client";' : ''),
+        // The video player (hooks) is its own chunk, also a client boundary: the server-safe `view` entry imports it, and a
+        // Server Component importing `view` gets a client component there rather than a hooks error.
+        manualChunks: (id) => (/syn-text-editor\/view\/(VideoPlayer|player)\./.test(id) ? 'player' : undefined),
+        banner: (chunk) => (chunk.name === 'player' || (chunk.isEntry && chunk.name === 'index') ? '"use client";' : ''),
       },
       onwarn (warning, warn) {
         // Our own "use client" lines inside modules: the banner above re-adds the one that matters.

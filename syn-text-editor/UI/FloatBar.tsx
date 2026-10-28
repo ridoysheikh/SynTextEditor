@@ -6,7 +6,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import {
   AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUp, ArrowUpToLine,
-  ChevronDown, Columns3, Heading, Pencil, Replace, Rows3, Trash2,
+  ChevronDown, Columns3, Heading, Image as ImageIcon, Pencil, Replace, Rows3, Trash2,
 } from "lucide-react";
 import type { Block } from "../core/model";
 import type { SynTextEditor } from "../SynTextEditor";
@@ -99,6 +99,7 @@ function FloatBarBase({ editor, surface, scroller }: { editor: SynTextEditor; su
           <>
             <ToolButton label={block.type === "image" ? "Alt text and caption" : "Details"} onClick={() => editor.openMediaDetails(b)}><Pencil /></ToolButton>
             <ToolButton label="Replace" onClick={() => editor.openGallery(block.type as "image" | "video" | "file", b)}><Replace /></ToolButton>
+            {block.type === "video" && <ToolButton label="Thumbnail" active={!!block.poster} onClick={() => editor.openMediaDetails(b)}><ImageIcon /></ToolButton>}
           </>
         )}
         <span className="se-sep" />

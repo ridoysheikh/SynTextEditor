@@ -8,6 +8,30 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+### Added
+
+- **Video thumbnails** — a video block has an optional `poster` (an image address). Choose it from the video's
+  current frame, an upload, your media library or a link: in the video's details, the bar over a selected video,
+  or right-click ▸ Thumbnail. `insertVideo(src, { poster })`, `setVideoThumbnail`, `captureThumbnail`,
+  `uploadThumbnail` and `openThumbnailLibrary` on the instance. Exported to HTML as `<video poster>` and read back.
+- **Video player** — a slim player drawn by the library replaces the browser's controls in the writing area, the
+  viewer and the details dialog: play button over the thumbnail, seek with buffered range and hover time, volume,
+  speed, full screen, keyboard control, compact on narrow players. Styled by `--se-player-*` variables;
+  `components.VideoPlayer` replaces it in the viewer (`<SynTextView components>`) and the dialog.
+  `mountPlayers()` draws it into HTML from `toHTML`. See `docs/video.md`.
+
+### Changed
+
+- Videos from `toHTML` (class mode) are wrapped in `<div class="se-player">`; call `mountPlayers()` to draw the
+  library's player into them. Inline-mode HTML is unchanged apart from `poster`.
+- The viewer's video is a client component in its own `"use client"` chunk; `@syntext/react/view` is still safe to
+  import from a Server Component.
+
+### Fixed
+
+- `toDoc` and `safeLink` no longer throw on a non-string `src`, `poster` or link in untrusted JSON — the value is
+  dropped instead.
+
 ## [0.1.0] - 2026-10-29
 
 The first release.

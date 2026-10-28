@@ -61,6 +61,7 @@ Used by everything else — replacing one restyles every place it appears.
 | `Divider` | — | between toolbar groups in a host-built toolbar |
 | `ColorPicker` | `ColorPickerProps`: `initial?`, `onApply(hex)`, `applyLabel?` | the custom colour section |
 | `ColorMenu` | `ColorMenuProps`: `kind`, `title`, `list` (the palette), `cur`, `onPick(nameOrHexOrNull)` | what the text-colour and highlight tools open |
+| `VideoPlayer` | `VideoPlayerProps`: `src`, `poster?`, `label?`, `clickToPlay?`, `className?`, `style?` | the video details dialog's preview (the viewer takes it as a prop). The writing area's player is DOM: use the [`--se-player-*` variables](video.md#making-it-yours) |
 
 ### Parts
 

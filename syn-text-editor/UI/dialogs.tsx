@@ -3,15 +3,20 @@
 // The link dialog, media details, preview, the find bar and the status bar. Each takes the editor instance.
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { CaseSensitive, ChevronDown, ChevronUp, Copy, ExternalLink, Unlink, X } from "lucide-react";
+import { Camera, CaseSensitive, ChevronDown, ChevronUp, Copy, ExternalLink, Images, Loader2, Unlink, Upload, X } from "lucide-react";
 import { toHTML } from "../core/html";
 import { clampWidth, safeLink } from "../core/model";
 import { isCollapsed } from "../core/ops";
 import { useEditorValue } from "../hooks";
 import type { SynTextEditor } from "../SynTextEditor";
+import { captureFrame } from "../view/player";
 import { SynTextView } from "../view/SynTextView";
+import { VideoPlayer as DefaultVideoPlayer } from "../view/VideoPlayer";
 import { Button, Field, Modal, Slider, ToolButton, cx, overridable } from "./primitives";
 import { keys, useToolState, useUI } from "./toolbar/tools";
+
+/** The video player of the dialog preview. Slot `VideoPlayer`. */
+const VideoPlayer = overridable("VideoPlayer", DefaultVideoPlayer);
 
 function LinkDialogBase({ editor, onClose }: { editor: SynTextEditor; onClose: () => void }) {
   const [state] = useState(() => editor.getState());
@@ -58,14 +63,21 @@ function MediaDetailsDialogBase({ editor, index, onClose }: { editor: SynTextEdi
   const [caption, setCaption] = useState(block?.caption ?? "");
   const [name, setName] = useState(block?.name ?? "");
   const [width, setWidth] = useState(block?.width ?? 100);
+  const [poster, setPoster] = useState(block?.poster);
   if (!block) return null;
+  const patch = () => block.type === "file"
+    ? { name: name.trim() || undefined }
+    : {
+        alt: block.type === "image" ? alt.trim() || undefined : undefined, caption: caption.trim() || undefined, width: clampWidth(width),
+        ...(block.type === "video" ? { poster } : {}),
+      };
   const save = () => {
-    const patch = block.type === "file"
-      ? { name: name.trim() || undefined }
-      : { alt: block.type === "image" ? alt.trim() || undefined : undefined, caption: caption.trim() || undefined, width: clampWidth(width) };
+    const p = patch();
     onClose();
-    requestAnimationFrame(() => editor.engine?.updateAtom(patch, index));
+    requestAnimationFrame(() => editor.engine?.updateAtom(p, index));
   };
+  // The library replaces this dialog for a moment: keep what was edited, and it comes back here after.
+  const library = () => { editor.engine?.updateAtom(patch(), index); editor.openThumbnailLibrary(index); };
   return (
     <Modal title={block.type === "file" ? "File details" : block.type === "video" ? "Video details" : "Image details"} onClose={onClose} width={480}
       footer={<><span className="se-tb-spacer" /><Button onClick={onClose}>Cancel</Button><Button tone="primary" onClick={save}>Save</Button></>}>
@@ -78,6 +90,7 @@ function MediaDetailsDialogBase({ editor, index, onClose }: { editor: SynTextEdi
             <Field label="Alt text — what the image shows, for screen readers"><input className="se-input" data-autofocus value={alt} onChange={(e) => setAlt(e.target.value)} /></Field>
           </>
         )}
+        {block.type === "video" && <VideoThumbnail editor={editor} src={block.src ?? ""} poster={poster} onPoster={setPoster} onLibrary={library} />}
         {block.type !== "file" && (
           <>
             <Field label="Caption"><input className="se-input" value={caption} onChange={(e) => setCaption(e.target.value)} /></Field>
@@ -90,6 +103,64 @@ function MediaDetailsDialogBase({ editor, index, onClose }: { editor: SynTextEdi
         <button type="submit" hidden />
       </form>
     </Modal>
+  );
+}
+
+/** A video's preview, and its thumbnail: the frame on screen, an uploaded image, one from the library, or none. */
+function VideoThumbnail({ editor, src, poster, onPoster, onLibrary }: {
+  editor: SynTextEditor; src: string; poster: string | undefined; onPoster: (p: string | undefined) => void; onLibrary: () => void;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const file = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState<"frame" | "upload" | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const run = async (kind: "frame" | "upload", make: () => Promise<File | null>) => {
+    setBusy(kind);
+    setProblem(null);
+    try {
+      const f = await make();
+      if (!f) return;
+      const url = await editor.uploadThumbnail(f);
+      if (url) onPoster(url); else setProblem("The image couldn't be stored");
+    } catch (e) {
+      setProblem((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+  const frame = () => run("frame", async () => {
+    const video = box.current?.querySelector("video");
+    if (!video) return null;
+    video.pause();
+    const blob = await captureFrame(video);
+    return new File([blob], `thumbnail-${Math.round(video.currentTime * 10) / 10}s.jpg`, { type: blob.type || "image/jpeg" });
+  });
+  return (
+    <>
+      <div ref={box} className="se-thumb-preview se-content se-figure"><VideoPlayer src={src} poster={poster} label="Preview" /></div>
+      <div className="se-field">
+        <span>Thumbnail — shown before the video plays</span>
+        <div className="se-thumb-row">
+          <span className="se-thumb" data-empty={poster ? undefined : ""}>
+            {poster ? <img src={poster} alt="" /> : <span>First frame</span>}
+          </span>
+          <div className="se-thumb-actions">
+            <Button size="sm" onClick={frame} disabled={!!busy}>
+              {busy === "frame" ? <Loader2 className="se-spin" /> : <Camera />}Use current frame
+            </Button>
+            <Button size="sm" onClick={() => file.current?.click()} disabled={!!busy}>
+              {busy === "upload" ? <Loader2 className="se-spin" /> : <Upload />}Upload image
+            </Button>
+            <Button size="sm" onClick={onLibrary} disabled={!!busy}><Images />{editor.storage ? "Library…" : "From a link…"}</Button>
+            {poster && <Button size="sm" tone="ghost" onClick={() => onPoster(undefined)} disabled={!!busy}><X />Remove</Button>}
+          </div>
+          <input ref={file} type="file" hidden accept="image/*"
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void run("upload", async () => f); }} />
+        </div>
+        {problem && <p className="se-error" role="alert">{problem}</p>}
+        <span className="se-hint">Play or scrub the preview to the moment you want, then “Use current frame”.</span>
+      </div>
+    </>
   );
 }
 

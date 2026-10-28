@@ -285,6 +285,7 @@ Defined in `layout.css`. `compact` is the default; `comfortable` applies with `d
 | `--se-content-size` | `15px` | paragraph text |
 | `--se-transition` | `140ms ease` | hover and focus transitions |
 | `--se-scrollbar-w` | `6px` | scrollbar width |
+| `--se-player-bar-h` · `--se-player-radius` · `--se-player-bg` · `--se-player-fg` · `--se-player-accent` | `30px` · `var(--se-radius-sm)` · `#0b0d12` · `#fff` · `var(--se-accent)` | the [video player](video.md#making-it-yours) |
 | `--se-popover-max-h` | `min(340px, 60vh)` | tallest a menu or picker gets — past it (or past the room left on screen) it scrolls |
 | `--se-popover-max-w` | `min(300px, 100vw - 12px)` | widest a menu gets; long rows end in "…" |
 | `--se-ctx-max-h` | `min(560px, 100vh - 8px)` | tallest the right-click menu gets |

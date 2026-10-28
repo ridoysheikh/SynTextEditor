@@ -28,6 +28,10 @@ export { TOOL_FORMAT } from "./presets";
 export { createRestStorage, createMemoryStorage, kindOf } from "./core/storage";
 export type { StorageAdapter, Asset, AssetKind, ListQuery, ListResult, UploadOptions, RestStorageOptions, RestEndpoint } from "./core/storage";
 
+// ── Video player ──────────────────────────────────────────────────────────────
+export { mountPlayer, mountPlayers, captureFrame, formatTime, PLAYER_ICONS } from "./view/player";
+export type { PlayerOptions } from "./view/player";
+
 // ── Replaceable parts (the `components` option) ──────────────────────────────
 export { SLOT_NAMES } from "./UI/slots";
 export type {

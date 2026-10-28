@@ -5,6 +5,7 @@
  * Text blocks are plain `div`s. Atoms (rule, image, video, file, table) are `contenteditable=false` islands the
  * caret steps over; a table's cells are editing hosts of their own (`td[contenteditable=true]`).
  */
+import { mountPlayer } from "../view/player";
 import { blockText, isAtom, spansText, type Block, type Cell, type Marks, type Span } from "../core/model";
 import type { Pos } from "../core/ops";
 import { blockClass, blockData, formatBytes, spanClass, spanStyle } from "../core/styles";
@@ -58,12 +59,25 @@ function buildAtom(el: HTMLElement, b: Block) {
     const fig = document.createElement("figure");
     fig.className = "se-figure";
     if (b.width) fig.style.width = `${b.width}%`;
-    const media = document.createElement(b.type === "image" ? "img" : "video") as HTMLImageElement | HTMLVideoElement;
-    media.src = b.src ?? "";
-    media.draggable = false;
-    if (media instanceof HTMLImageElement) media.alt = b.alt ?? "";
-    else { media.controls = true; media.preload = "metadata"; }
-    fig.append(media);
+    if (b.type === "image") {
+      const img = document.createElement("img");
+      img.src = b.src ?? "";
+      img.draggable = false;
+      img.alt = b.alt ?? "";
+      fig.append(img);
+    } else {
+      // The library's player; a click on the picture selects the block (clickToPlay off), the controls play it.
+      const player = document.createElement("div");
+      player.className = "se-player";
+      const video = document.createElement("video");
+      video.src = b.src ?? "";
+      if (b.poster) video.poster = b.poster;
+      video.preload = "metadata";
+      video.draggable = false;
+      player.append(video);
+      fig.append(player);
+      mountPlayer(player, { clickToPlay: false, label: b.caption || "Video" });
+    }
     if (b.caption) {
       const cap = document.createElement("figcaption");
       cap.className = "se-caption";

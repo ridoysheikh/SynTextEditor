@@ -55,6 +55,8 @@ export interface Block {
   bytes?: number;
   /** the storage id it came from, so the gallery can find it again */
   asset?: string;
+  /** video: the thumbnail shown before it plays — an image address */
+  poster?: string;
   // ── table ──
   rows?: Cell[][];
   /** the first row is a header */
@@ -95,15 +97,20 @@ export const clampSize = (n: number) => Math.min(SIZE_MAX, Math.max(SIZE_MIN, Ma
 export const clampWidth = (n: number) => Math.min(100, Math.max(10, Math.round(n)));
 
 /** An address safe to put in href: http(s), mailto, tel, a path, or a bare domain (made https). */
-export const safeLink = (href: string | null | undefined): string | undefined => {
-  const v = (href ?? "").trim();
+export const safeLink = (href: unknown): string | undefined => {
+  const v = (typeof href === "string" ? href : "").trim();
   if (!v) return undefined;
   const full = SAFE_LINK.test(v) ? v : /^[\w.-]+\.[a-z]{2,}(\/|$|\?|#)/i.test(v) ? `https://${v}` : "";
   return full && full.length <= 2000 ? full : undefined;
 };
+/** An address safe for an image only (a video's thumbnail): like `safeSrc`, but inline data must be an image. */
+export const safePoster = (src: unknown): string | undefined => {
+  const v = safeSrc(src);
+  return v && (!/^data:/i.test(v) || /^data:image\//i.test(v)) ? v : undefined;
+};
 /** An address safe for src: http(s), a path, a blob, or an inline image/video. */
-export const safeSrc = (src: string | null | undefined): string | undefined => {
-  const v = (src ?? "").trim();
+export const safeSrc = (src: unknown): string | undefined => {
+  const v = (typeof src === "string" ? src : "").trim();
   return v && SAFE_SRC.test(v) && !/^javascript:/i.test(v) ? v : undefined;
 };
 export const safeColor = (c: unknown): string | undefined =>
@@ -228,6 +235,7 @@ export function cleanBlock(raw: unknown, schema: Schema = FULL_SCHEMA): Block | 
     for (const k of ["alt", "caption", "name", "mime", "asset"] as const) if (typeof r[k] === "string" && r[k]) b[k] = (r[k] as string).slice(0, 500);
     if (typeof r.width === "number" && Number.isFinite(r.width) && r.width < 100) b.width = clampWidth(r.width);
     if (typeof r.bytes === "number" && Number.isFinite(r.bytes) && r.bytes >= 0) b.bytes = Math.floor(r.bytes);
+    if (type === "video") { const poster = safePoster(r.poster as string); if (poster) b.poster = poster; }
   }
   if (type === "table") {
     const rows = Array.isArray(r.rows) ? r.rows.filter(Array.isArray) as unknown[][] : [];

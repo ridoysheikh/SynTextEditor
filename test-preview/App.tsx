@@ -23,14 +23,15 @@ import { ColorTool, ListTool, MarkTool, MediaTool, UndoTool, RedoTool } from '@s
 import { ToolButton } from '@syn/UI/primitives'
 import { SEED, WORD_DOC } from '@test-preview/demo/sample'
 import { CustomUIDemo } from '@test-preview/demo/CustomUI'
+import { VideoDemo } from '@test-preview/demo/VideoDemo'
 import layoutCss from '@syn/styles/layout.css?inline'
 import themeCss from '@syn/styles/theme.css?inline'
 
-type Demo = 'word' | 'comment' | 'minimal' | 'themed' | 'controlled' | 'viewer' | 'custom' | 'ui'
+type Demo = 'word' | 'comment' | 'minimal' | 'themed' | 'controlled' | 'viewer' | 'custom' | 'ui' | 'video'
 const DEMOS: { id: Demo; label: string }[] = [
   { id: 'word', label: 'Word processor' }, { id: 'comment', label: 'Comment (basic)' }, { id: 'minimal', label: 'Minimal' },
   { id: 'themed', label: 'Theming' }, { id: 'controlled', label: 'Controlled & right-click' }, { id: 'viewer', label: 'Viewer & HTML' }, { id: 'custom', label: 'Custom toolbar' },
-  { id: 'ui', label: 'Custom components' },
+  { id: 'ui', label: 'Custom components' }, { id: 'video', label: 'Video' },
 ]
 
 export default function App () {
@@ -61,6 +62,7 @@ export default function App () {
           {demo === 'viewer' && <ViewerDemo />}
           {demo === 'custom' && <CustomToolbarDemo />}
           {demo === 'ui' && <CustomUIDemo />}
+          {demo === 'video' && <VideoDemo />}
         </main>
       </div>
     </div>

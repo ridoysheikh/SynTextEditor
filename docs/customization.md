@@ -305,6 +305,7 @@ Text colours, highlights, sizes and fonts are inline styles on the span.
 | `.se-menu-item` (`[aria-checked]`, `[data-danger]`), `.se-menu-text`, `.se-menu-kbd`, `.se-menu-sep`, `.se-menu-label` | menu rows |
 | `.se-colors`, `.se-colors-hover`, `.se-swatches`, `.se-swatch` (`[data-none]`) | colour menus |
 | `.se-picker`, `.se-sv`, `.se-sv-thumb`, `.se-picker-row`, `.se-picker-chip` | the custom colour picker |
+| `.se-player`, `.se-pl-big`, `.se-pl-bar`, `.se-pl-btn`, `.se-pl-seek`, `.se-pl-vol`, `.se-pl-rate`, `.se-thumb` | the [video player](video.md) and the thumbnail picker |
 | `.se-slider`, `.se-slider-track`, `.se-slider-fill`, `.se-slider-thumb` (`[data-track]` for a painted track) | sliders |
 | `.se-grid-pick`, `.se-grid-cell`, `.se-grid-caption` | table size picker |
 | `.se-tip` | tooltip |

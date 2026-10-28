@@ -4,6 +4,8 @@ import { cleanBlock, docLength, docToPlain, docWords, isEmptyDoc, safeLink, safe
 import * as ops from "../core/ops";
 import * as tables from "../core/table";
 import { createMemoryStorage } from "../core/storage";
+import { formatTime } from "../view/player";
+import { safePoster } from "../core/model";
 import { FONTS, fontFaceCSS, fontStylesheets, listMarkers, resolveFonts, usedFonts } from "../core/styles";
 import { PRESETS } from "../presets";
 
@@ -238,5 +240,55 @@ describe("colour picker maths", async () => {
     expect(normalizeHex(" #1a2B3c ")).toBe("#1a2b3c");
     expect(normalizeHex("#12345")).toBeNull();
     expect(normalizeHex("red")).toBeNull();
+  });
+});
+
+describe("video thumbnails", () => {
+  const vid = (extra: Record<string, unknown>) => ({ version: 1, blocks: [{ type: "video", src: "https://x.test/a.mp4", spans: [], ...extra }] });
+
+  it("keeps a safe poster on videos only", () => {
+    expect(toDoc(vid({ poster: "https://x.test/p.jpg" }))!.blocks[0].poster).toBe("https://x.test/p.jpg");
+    expect(toDoc(vid({ poster: "/uploads/p.png" }))!.blocks[0].poster).toBe("/uploads/p.png");
+    expect(toDoc(vid({ poster: "data:image/png;base64,AAAA" }))!.blocks[0].poster).toBe("data:image/png;base64,AAAA");
+    const img = toDoc({ version: 1, blocks: [{ type: "image", src: "https://x.test/a.png", poster: "https://x.test/p.jpg", spans: [] }] })!;
+    expect(img.blocks[0].poster).toBeUndefined();
+  });
+
+  it("doesn't throw on non-string addresses (untrusted JSON)", () => {
+    for (const bad of [5, true, {}, [], null])
+      expect(() => toDoc({ version: 1, blocks: [{ type: "video", src: bad, spans: [] }, { type: "image", src: "https://x/a.png", poster: bad, spans: [] }] })).not.toThrow();
+    expect(toDoc({ version: 1, blocks: [{ type: "video", src: 5, spans: [] }] })!.blocks.some((b) => b.type === "video")).toBe(false);
+    expect(safeLink(42 as never)).toBeUndefined();
+    expect(safeSrc({} as never)).toBeUndefined();
+  });
+
+  it("drops unsafe posters", () => {
+    for (const poster of ["javascript:alert(1)", "data:video/mp4;base64,AAAA", "data:text/html;base64,AAAA", "ftp://x/p.jpg", "", 5])
+      expect(toDoc(vid({ poster }))!.blocks[0].poster).toBeUndefined();
+    expect(safePoster("data:video/mp4;base64,AAAA")).toBeUndefined();
+    expect(safePoster(null)).toBeUndefined();
+  });
+
+  it("exports the poster and reads it back", () => {
+    const doc = toDoc(vid({ poster: "https://x.test/p.jpg", caption: "Demo", width: 60 }))!;
+    const html = toHTML(doc);
+    expect(html).toContain('class="se-player"');
+    expect(html).toContain('poster="https://x.test/p.jpg"');
+    expect(html).toContain("controls");                                  // the no-script fallback
+    expect(toHTML(doc, { mode: "inline" })).toContain('poster="https://x.test/p.jpg"');
+  });
+
+  it("escapes the poster in HTML", () => {
+    const html = toHTML({ blocks: [{ type: "video", src: "https://x.test/a.mp4", poster: 'https://x.test/p.jpg?a="b"&c=<d>', spans: [] }] });
+    expect(html).not.toContain('"b"');
+    expect(html).toContain("&quot;b&quot;");
+  });
+
+  it("formats time", () => {
+    expect(formatTime(0)).toBe("0:00");
+    expect(formatTime(75)).toBe("1:15");
+    expect(formatTime(3725)).toBe("1:02:05");
+    expect(formatTime(NaN)).toBe("0:00");
+    expect(formatTime(Infinity)).toBe("0:00");
   });
 });

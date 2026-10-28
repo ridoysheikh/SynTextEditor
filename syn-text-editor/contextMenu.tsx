@@ -5,9 +5,9 @@
 
 import {
   AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUp, ArrowUpToLine,
-  Bold, ClipboardPaste, ClipboardType, Code, Code2, Copy, Eraser, ExternalLink, Film, Heading, Image as ImageIcon, Italic,
+  Bold, Camera, ClipboardPaste, ClipboardType, Code, Code2, Copy, Eraser, ExternalLink, Film, Heading, Image as ImageIcon, Images, Italic,
   Link2, List, ListChecks, ListOrdered, Minus, MoveHorizontal, Paperclip, Pencil, Pilcrow, Plus, Quote, Replace, Scissors,
-  Strikethrough, Subscript, Superscript, Table, TextSelect, Trash2, Type, Underline, Unlink,
+  Strikethrough, Subscript, Superscript, Table, TextSelect, Trash2, Type, Underline, Unlink, X,
 } from "lucide-react";
 import { BLOCK_LABEL, type TextType } from "./core/model";
 import { SynTextEditor, type ContextMenuContext, type ContextMenuItem } from "./SynTextEditor";
@@ -17,7 +17,7 @@ export const CONTEXT_ITEM_IDS = [
   "cut", "copy", "paste", "pastePlain", "selectAll",
   "bold", "italic", "underline", "strike", "format", "turnInto", "clear",
   "link", "openLink", "copyLink", "removeLink", "insert",
-  "align", "width", "details", "replace", "openFile", "copyAddress", "moveUp", "moveDown", "delete",
+  "align", "width", "details", "replace", "thumbnail", "openFile", "copyAddress", "moveUp", "moveDown", "delete",
   "tableInsert", "tableDelete", "header",
   // rows inside submenus — pick them with a list too, and they're lifted out to the top level
   "code", "sup", "sub", "p", "h1", "h2", "h3", "h4", "quote", "bullet", "ordered", "check",
@@ -162,8 +162,15 @@ export function defaultContextItems(ctx: ContextMenuContext): ContextMenuItem[] 
         { id: "width", label: "Width", icon: <MoveHorizontal />, items: [25, 33, 50, 66, 75, 100].map((w): ContextMenuItem => (
           { id: `w${w}`, label: `${w}%`, checked: (block.width ?? 100) === w, onSelect: () => engine.updateAtom({ width: w }, index) })) });
       }
-      add({ id: "details", label: target === "image" ? "Alt text and caption…" : target === "video" ? "Caption and width…" : "Rename…", icon: <Pencil />, onSelect: () => ed.openMediaDetails(index) },
+      add({ id: "details", label: target === "image" ? "Alt text and caption…" : target === "video" ? "Caption and thumbnail…" : "Rename…", icon: <Pencil />, onSelect: () => ed.openMediaDetails(index) },
         { id: "replace", label: `Replace ${target}…`, icon: <Replace />, onSelect: () => ed.openGallery(target, index) });
+      if (target === "video") {
+        add({ id: "thumbnail", label: "Thumbnail", icon: <ImageIcon />, items: [
+          { id: "thumbFrame", label: "Use current frame", icon: <Camera />, onSelect: () => { void ed.captureThumbnail(index); } },
+          { id: "thumbPick", label: "Choose an image…", icon: <Images />, onSelect: () => ed.openThumbnailLibrary(index) },
+          { id: "thumbRemove", label: "Remove thumbnail", icon: <X />, disabled: !block.poster, onSelect: () => ed.setVideoThumbnail(index, null) },
+        ] });
+      }
     }
     add(SEP,
       { id: "openFile", label: `Open ${target} in new tab`, icon: <ExternalLink />, onSelect: () => window.open(block.src, "_blank", "noopener,noreferrer") },

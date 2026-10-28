@@ -104,7 +104,7 @@ export function EditorView({ editor, className, style }: { editor: SynTextEditor
               <FloatBar editor={editor} surface={surfaceEl} scroller={scroller} />
             </div>
             {statusbar && <StatusBar editor={editor} className={c.classNames?.statusbar} style={c.styles?.statusbar} />}
-            {modal?.kind === "gallery" && <MediaGallery editor={editor} filter={modal.filter} replace={modal.replace} onClose={() => editor.closeModal()} />}
+            {modal?.kind === "gallery" && <MediaGallery editor={editor} filter={modal.filter} replace={modal.replace} thumbnailFor={modal.thumbnailFor} onClose={() => editor.closeModal()} />}
             {modal?.kind === "link" && <LinkDialog editor={editor} onClose={() => editor.closeModal()} />}
             {modal?.kind === "media" && <MediaDetailsDialog editor={editor} index={modal.index} onClose={() => editor.closeModal()} />}
             {modal?.kind === "preview" && <PreviewDialog editor={editor} onClose={() => editor.closeModal()} />}

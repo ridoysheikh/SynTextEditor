@@ -10,7 +10,7 @@
  * carries the exact blocks in `data-syn`, so pasting between editors loses nothing.
  */
 import {
-  BLOCK_SIZE, cleanBlock, clampSize, FULL_SCHEMA, isAtom, normaliseSpans, safeFont, safeLink, safeSrc,
+  BLOCK_SIZE, cleanBlock, clampSize, FULL_SCHEMA, isAtom, normaliseSpans, safeFont, safeLink, safePoster, safeSrc,
   type Block, type BlockType, type Cell, type Marks, type Schema, type Span,
 } from "./model";
 import { blockClass, blockData, cssText, formatBytes, listMarkers, spanClass, spanStyle } from "./styles";
@@ -57,7 +57,12 @@ function atomHtml(b: Block, inline: boolean): string {
     case "image":
       return `<figure${fig}><img src="${esc(b.src ?? "")}" alt="${esc(b.alt ?? "")}"${inline ? ` style="${width}height:auto;border-radius:6px"` : width ? ` style="${width}"` : ""}>${cap}</figure>`;
     case "video":
-      return `<figure${fig}><video src="${esc(b.src ?? "")}" controls preload="metadata"${inline ? ` style="${width}width:100%;border-radius:6px"` : width ? ` style="${width}"` : ""}></video>${cap}</figure>`;
+    {
+      // Class mode wraps it for the library's player (`mountPlayers`); `controls` is the fallback without script.
+      const poster = b.poster ? ` poster="${esc(b.poster)}"` : "";
+      if (inline) return `<figure${fig}><video src="${esc(b.src ?? "")}"${poster} controls preload="metadata" style="${width}width:100%;border-radius:6px"></video>${cap}</figure>`;
+      return `<figure${fig}><div class="se-player"${width ? ` style="${width}"` : ""}><video src="${esc(b.src ?? "")}"${poster} controls preload="metadata" playsinline></video></div>${cap}</figure>`;
+    }
     case "file": {
       const label = esc(b.name || b.src || "file");
       const size = b.bytes !== undefined ? ` <span${inline ? ' style="opacity:.6"' : ' class="se-file-size"'}>(${formatBytes(b.bytes)})</span>` : "";
@@ -262,6 +267,7 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
       out.push({
         type: tag === "IMG" ? "image" : "video", src, spans: [],
         ...(el.getAttribute("alt") ? { alt: el.getAttribute("alt")! } : {}), ...(caption ? { caption } : {}),
+        ...(tag === "VIDEO" && safePoster(el.getAttribute("poster")) ? { poster: safePoster(el.getAttribute("poster"))! } : {}),
         ...(el.style?.width?.endsWith("%") && w > 0 && w < 100 ? { width: w } : {}),
       });
       return;

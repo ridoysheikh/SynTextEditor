@@ -14,6 +14,9 @@ export {
 export type {
   RichDoc, Block, Span, Marks, Cell, BlockType, TextType, AtomType, Align, ListKind, Toggle, MarkKey, Format, Schema,
 } from "./core/model";
+export { VideoPlayer } from "./view/VideoPlayer";
+export type { VideoPlayerProps } from "./view/VideoPlayer";
+export { safePoster } from "./core/model";
 export { COLORS, HIGHLIGHTS, FONTS, SIZES, colorValue, resolveFonts, fontFamily, fontFaceCSS, fontStylesheets, usedFonts, loadFonts } from "./core/styles";
 export type { Swatch, FontOption, FontFile, FontsConfig } from "./core/styles";
 

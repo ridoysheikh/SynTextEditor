@@ -18,17 +18,21 @@ const PAGE = 24;
 const KIND_LABEL: Record<AssetKind, string> = { image: "Images", video: "Videos", file: "Files" };
 const KIND_ICON = { image: ImageIcon, video: Film, file: File };
 
-function MediaGalleryBase({ editor, filter, replace, onClose }: {
+function MediaGalleryBase({ editor, filter, replace, thumbnailFor, onClose: close }: {
   editor: SynTextEditor;
   /** Only this kind (set when opened from the image / video / file tool). */
   filter?: AssetKind;
   /** The block index of a media block whose file is being swapped. */
   replace?: number;
+  /** Choosing an image as the thumbnail of the video at this index; closing goes back to its details. */
+  thumbnailFor?: number;
   onClose: () => void;
 }) {
   const storage = editor.storage;
   const replacing = replace !== undefined;
-  const lockedKind = filter ?? (replacing ? (editor.getDoc().blocks[replace!]?.type as AssetKind | undefined) : undefined);
+  const thumb = thumbnailFor !== undefined;
+  const onClose = thumb ? () => editor.openMediaDetails(thumbnailFor!) : close;
+  const lockedKind = thumb ? "image" : filter ?? (replacing ? (editor.getDoc().blocks[replace!]?.type as AssetKind | undefined) : undefined);
   const kinds = (["image", "video", "file"] as const).filter((k) => editor.schema.has(k));
   const [tab, setTab] = useState<Tab>(storage ? "library" : "upload");
   const [kind, setKind] = useState<AssetKind | undefined>(lockedKind);
@@ -69,7 +73,7 @@ function MediaGalleryBase({ editor, filter, replace, onClose }: {
     setConfirm(null);
     setPicked((p) => {
       const has = p.some((x) => x.id === a.id);
-      if (!multi || replacing) return has && p.length === 1 ? [] : [a];
+      if (!multi || replacing || thumb) return has && p.length === 1 ? [] : [a];
       return has ? p.filter((x) => x.id !== a.id) : [...p, a];
     });
     setDetail(a);
@@ -95,10 +99,16 @@ function MediaGalleryBase({ editor, filter, replace, onClose }: {
 
   const insert = (assets: Asset[]) => {
     if (!assets.length) return;
-    if (replacing) {
+    if (thumb) {
+      editor.setVideoThumbnail(thumbnailFor!, assets[0].url);
+    } else if (replacing) {
       const a = assets[0];
       const b = blockFromAsset(a);
-      editor.engine?.updateAtom({ src: b.src, asset: a.id, ...(b.type === "file" ? { name: b.name, mime: b.mime, bytes: b.bytes } : {}) }, replace!);
+      editor.engine?.updateAtom({
+        src: b.src, asset: a.id,
+        ...(b.type === "file" ? { name: b.name, mime: b.mime, bytes: b.bytes } : {}),
+        ...(b.type === "video" ? { poster: b.poster } : {}),     // another video: its own thumbnail, or none
+      }, replace!);
     } else for (const a of assets) editor.insertAsset(a);
     onClose();
   };
@@ -107,12 +117,12 @@ function MediaGalleryBase({ editor, filter, replace, onClose }: {
     if (!assets.length) return;
     if (!storage) { insert(assets); return; }                       // inline files: nothing to browse — straight in
     setItems((xs) => [...assets, ...xs.filter((x) => !assets.some((a) => a.id === x.id))]);
-    setPicked(replacing ? assets.slice(0, 1) : assets);
+    setPicked(replacing || thumb ? assets.slice(0, 1) : assets);
     setDetail(assets[0]);
     setTab("library");
   };
 
-  const title = replacing ? "Replace file" : lockedKind ? `Insert ${lockedKind === "file" ? "file" : lockedKind}` : "Media library";
+  const title = thumb ? "Choose a thumbnail" : replacing ? "Replace file" : lockedKind ? `Insert ${lockedKind === "file" ? "file" : lockedKind}` : "Media library";
   return (
     <Modal title={title} onClose={onClose} width={860}
       footer={
@@ -120,7 +130,7 @@ function MediaGalleryBase({ editor, filter, replace, onClose }: {
           {tab === "library" && <span className="se-hint">{picked.length ? `${picked.length} selected` : storage ? "Click to select · Ctrl/⌘-click for several" : ""}</span>}
           <span className="se-tb-spacer" />
           <Button onClick={onClose}>Cancel</Button>
-          {tab === "library" && <Button tone="primary" disabled={!picked.length} onClick={() => insert(picked)}>{replacing ? "Replace" : picked.length > 1 ? `Insert ${picked.length}` : "Insert"}</Button>}
+          {tab === "library" && <Button tone="primary" disabled={!picked.length} onClick={() => insert(picked)}>{thumb ? "Use as thumbnail" : replacing ? "Replace" : picked.length > 1 ? `Insert ${picked.length}` : "Insert"}</Button>}
         </>
       }>
       <div className="se-tabs" role="tablist">
@@ -182,8 +192,8 @@ function MediaGalleryBase({ editor, filter, replace, onClose }: {
             )}
           </>
         )}
-        {tab === "upload" && <UploadPane editor={editor} kind={lockedKind} multiple={!replacing} onDone={onUploaded} />}
-        {tab === "link" && <LinkPane editor={editor} kind={lockedKind} onInsert={(a) => insert([a])} />}
+        {tab === "upload" && <UploadPane editor={editor} kind={lockedKind} multiple={!replacing && !thumb} thumbnail={thumb} onDone={onUploaded} />}
+        {tab === "link" && <LinkPane editor={editor} kind={lockedKind} action={thumb ? "Use as thumbnail" : undefined} onInsert={(a) => insert([a])} />}
       </div>
     </Modal>
   );
@@ -214,7 +224,7 @@ function Tile({ asset: a, picked, onPick, onOpen }: { asset: Asset; picked: bool
   );
 }
 
-function UploadPane({ editor, kind, multiple, onDone }: { editor: SynTextEditor; kind?: AssetKind; multiple: boolean; onDone: (a: Asset[]) => void }) {
+function UploadPane({ editor, kind, multiple, thumbnail = false, onDone }: { editor: SynTextEditor; kind?: AssetKind; multiple: boolean; thumbnail?: boolean; onDone: (a: Asset[]) => void }) {
   const ui = useUI(editor);
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
@@ -223,10 +233,10 @@ function UploadPane({ editor, kind, multiple, onDone }: { editor: SynTextEditor;
   const go = async (list: FileList | null) => {
     const files = Array.from(list ?? []).slice(0, multiple ? undefined : 1);
     if (!files.length) return;
-    const bad = files.map((f) => (kind && kindOf(f.type) !== kind ? `${f.name} isn't ${kind === "image" ? "an image" : `a ${kind}`}` : editor.accepts(f))).filter((p): p is string => !!p);
+    const bad = files.map((f) => (kind && kindOf(f.type) !== kind ? `${f.name} isn't ${kind === "image" ? "an image" : `a ${kind}`}` : editor.accepts(f, { thumbnail }))).filter((p): p is string => !!p);
     setProblems(bad);
-    const ok = files.filter((f) => (!kind || kindOf(f.type) === kind) && !editor.accepts(f));
-    if (ok.length) onDone(await editor.uploadFiles(ok, null, false));
+    const ok = files.filter((f) => (!kind || kindOf(f.type) === kind) && !editor.accepts(f, { thumbnail }));
+    if (ok.length) onDone(await editor.uploadFiles(ok, null, false, { thumbnail }));
   };
   const limit = editor.storage ? editor.uploadConfig.maxSize : editor.uploadConfig.inlineLimit;
   return (
@@ -261,7 +271,7 @@ function UploadPane({ editor, kind, multiple, onDone }: { editor: SynTextEditor;
   );
 }
 
-function LinkPane({ editor, kind, onInsert }: { editor: SynTextEditor; kind?: AssetKind; onInsert: (a: Asset) => void }) {
+function LinkPane({ editor, kind, action = "Insert", onInsert }: { editor: SynTextEditor; kind?: AssetKind; action?: string; onInsert: (a: Asset) => void }) {
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
   const guess = useMemo<AssetKind>(() => {
@@ -296,7 +306,7 @@ function LinkPane({ editor, kind, onInsert }: { editor: SynTextEditor; kind?: As
       )}
       {src && k === "image" && <div className="se-preview-frame" style={{ padding: 8, textAlign: "center" }}><img src={src} alt="" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 6 }} /></div>}
       {url && !src && <p className="se-error">That address can't be used — it must start with https://</p>}
-      <div><Button tone="primary" type="submit" disabled={!src}>Insert</Button></div>
+      <div><Button tone="primary" type="submit" disabled={!src}>{action}</Button></div>
     </form>
   );
 }

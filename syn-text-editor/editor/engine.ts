@@ -125,6 +125,8 @@ export class RichEngine {
     this.root.querySelectorAll<HTMLElement>("td[data-r],th[data-r]").forEach((td) => { td.contentEditable = readOnly ? "false" : "true"; });
   }
   get isReadOnly() { return this.readOnly; }
+  /** The element drawing block `b` (an image's figure, a video's player…). */
+  elementOf(b: number): HTMLElement | undefined { return this.root.children[b] as HTMLElement | undefined; }
   /** What the editor allows from now on (typing, paste, shortcuts). */
   setSchema(schema: Schema) { this.opts.schema = schema; }
 
