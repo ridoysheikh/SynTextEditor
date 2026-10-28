@@ -150,6 +150,8 @@
 /* Every icon: centred on its line (never sitting on the baseline), never squeezed, one line weight. */
 .se-root :is(.se-toolbar, .se-float, .se-findbar, .se-statusbar) svg, .se-layer svg { flex-shrink: 0; vertical-align: middle; stroke-width: var(--se-icon-stroke, 2); }
 .se-btn > svg { width: var(--se-icon); height: var(--se-icon); flex-shrink: 0; }
+/* A button of your own (components.Button) gets the same icon size — zero specificity, so any rule of yours wins. */
+:where(.se-layer, .se-toolbar) :where(button, a) > :where(svg) { width: var(--se-icon); height: var(--se-icon); }
 .se-btn:hover:not(:disabled) { color: var(--se-text); background: var(--se-surface-2); }
 .se-btn[aria-pressed="true"], .se-btn[data-open] { color: var(--se-accent); background: var(--se-selected); }
 .se-btn:disabled { color: var(--se-muted); cursor: default; opacity: .6; }

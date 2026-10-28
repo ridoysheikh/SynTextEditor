@@ -8,6 +8,12 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+### Fixed
+
+- Icons inside a replacement `Button` (`components.Button`) were drawn at the icon library's default 24px — the
+  gallery's refresh and delete icons looked huge. Icons in any button, in dialogs and the toolbar, now take `--se-icon`
+  unless you size them yourself.
+
 ## [0.7.0] - 2026-10-29
 
 ### Added
