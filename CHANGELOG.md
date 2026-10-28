@@ -8,6 +8,8 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-29
+
 ### Fixed
 
 - The size box, steppers and "Default" menu item use the sizes the stylesheet draws (`--se-content-size`,
@@ -141,7 +143,8 @@ The first release.
 - **Docs** — getting started, configuration, theming, customization, components, right-click menu, storage, API
   reference and the document model, in `docs/`.
 
-[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.4.0...v0.4.1

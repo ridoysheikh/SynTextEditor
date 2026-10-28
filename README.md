@@ -34,7 +34,7 @@ Releases are published on GitHub ([all releases](https://github.com/ridoysheikh/
 with a ready-built package. Install one by its URL:
 
 ```bash
-npm install https://github.com/ridoysheikh/SynTextEditor/releases/download/v0.6.0/syntext-react-0.6.0.tgz
+npm install https://github.com/ridoysheikh/SynTextEditor/releases/download/v0.6.1/syntext-react-0.6.1.tgz
 # pnpm add …   ·   yarn add …   ·   bun add …   (same URL)
 ```
 

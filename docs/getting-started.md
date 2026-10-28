@@ -6,7 +6,7 @@ From a [GitHub release](https://github.com/ridoysheikh/SynTextEditor/releases) â
 package by URL:
 
 ```bash
-npm install https://github.com/ridoysheikh/SynTextEditor/releases/download/v0.6.0/syntext-react-0.6.0.tgz
+npm install https://github.com/ridoysheikh/SynTextEditor/releases/download/v0.6.1/syntext-react-0.6.1.tgz
 # pnpm add / yarn add / bun add take the same URL. Peer dependencies: react >= 18, react-dom >= 18
 ```
 
