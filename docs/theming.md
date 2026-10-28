@@ -291,6 +291,29 @@ Defined in `layout.css`. `compact` is the default; `comfortable` applies with `d
 | `--se-ctx-max-h` | `min(560px, 100vh - 8px)` | tallest the right-click menu gets |
 | `--se-ctx-max-w` | `280px` | widest the right-click menu gets |
 
+### Type scale
+
+The chrome's text sizes and weights are variables too. Each falls back to the value shown, so set only the ones you
+want different. `--se-ui-size` (above) is the base text of the toolbar, menus and dialogs; these are the steps around it.
+
+| Variable | Default | Used for |
+|---|---|---|
+| `--se-fs-2xs` | `10.5px` | menu section labels, the kind tag on a media tile (`10px`) |
+| `--se-fs-xs` | `11px` | status text, shortcut hints, tooltips, media tile sub-line |
+| `--se-fs-sm` | `12px` | field labels, hints, small buttons, tab-less captions, media names, hex input, source view, find count |
+| `--se-fs-md` | `12.5px` | checkboxes, errors, upload rows, image captions |
+| `--se-fs-lg` | `14px` | the drop zone's heading |
+| `--se-fw-medium` | `500` | field labels, buttons, tabs, media names, file names |
+| `--se-fw-semibold` | `600` | menu labels, status emphasis, table header cells, tile kind |
+| `--se-fw-bold` | `700` | bold text in documents |
+| `--se-modal-title-size` / `-weight` | `14px` / `600` | dialog title |
+
+**Documents** (editor and viewer): `--se-content-size` (paragraph, `15px`), `--se-h1-size` … `--se-h4-size`
+(`30` / `24` / `19` / `16px`), `--se-h1-weight` … `--se-h4-weight`, `--se-code-size` (`13px`), `--se-table-size`
+(`14px`), `--se-file-size` (`13.5px`, file links). The size box in the toolbar still shows the original block sizes
+(`BLOCK_SIZE`) for a heading, because an explicit size is stored in px against them; that only matters if you also use
+the size tool on a heading.
+
 ### Shape and dialog chrome
 
 Every corner and the dialog's frame has its own variable, each falling back to `--se-radius` / `--se-radius-sm` /

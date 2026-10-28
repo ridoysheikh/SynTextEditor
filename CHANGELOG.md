@@ -8,6 +8,13 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+### Added
+
+- **Type scale variables** — the chrome's font sizes (`--se-fs-2xs` … `--se-fs-lg`) and weights (`--se-fw-medium`,
+  `-semibold`, `-bold`), and the document's heading sizes and weights (`--se-h1-size` … `--se-h4-weight`),
+  `--se-code-size`, `--se-table-size` and `--se-file-size`. All fall back to the previous values. See
+  `docs/theming.md`.
+
 ## [0.5.0] - 2026-10-29
 
 ### Added
