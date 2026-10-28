@@ -1,6 +1,6 @@
 {
   "name": "@syntext/react",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Lightweight rich text editor for React and Next.js — model-first engine, themeable UI, media gallery over your own storage",
   "license": "MIT",
   "author": "ridoysheikh",
