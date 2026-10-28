@@ -143,7 +143,7 @@ function MediaGalleryBase({ editor, filter, replace, thumbnailFor, onClose: clos
           <>
             <div className="se-gallery-bar">
               <div style={{ position: "relative", flex: 1, minWidth: 160 }}>
-                <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "var(--se-muted)" }} />
+                <Search className="se-input-icon" />
                 <input className="se-input" style={{ paddingLeft: 32 }} placeholder="Search files" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search files" />
               </div>
               {!lockedKind && kinds.length > 1 && (

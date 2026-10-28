@@ -291,6 +291,20 @@ Defined in `layout.css`. `compact` is the default; `comfortable` applies with `d
 | `--se-ctx-max-h` | `min(560px, 100vh - 8px)` | tallest the right-click menu gets |
 | `--se-ctx-max-w` | `280px` | widest the right-click menu gets |
 
+### Icons
+
+Icons are sized in `em`, so they scale with the text next to them (the chrome's `--se-ui-size`, or any `font-size` you
+set on a part) and stay centred on its line. Set a variable to a length to pin it.
+
+| Variable | Default | Used for |
+|---|---|---|
+| `--se-icon` | `1.2em` | toolbar and dialog-button icons |
+| `--se-icon-sm` | `1.1em` | menu rows, tabs, the right-click menu, the search field |
+| `--se-icon-xs` | `1em` | checkmarks |
+| `--se-icon-caret` | `0.9em` | the small chevron on menu buttons |
+| `--se-icon-lg` | `2.2em` | empty states, file tiles, the drop zone |
+| `--se-icon-stroke` | `2` | line weight of every icon |
+
 ### Type scale
 
 The chrome's text sizes and weights are variables too. Each falls back to the value shown, so set only the ones you

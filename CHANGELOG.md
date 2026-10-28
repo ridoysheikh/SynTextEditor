@@ -8,6 +8,17 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+### Added
+
+- **Icon scale** — icon sizes are `em` variables (`--se-icon`, `-sm`, `-xs`, `-caret`, `-lg`) so they follow the text
+  they sit beside, plus `--se-icon-stroke` for the line weight. Every icon is centred on its line, and the search
+  field's icon is centred in the field. See `docs/theming.md`.
+
+### Changed
+
+- Icons were fixed pixel sizes (11–28px); they are now em-based and land within a pixel of the old sizes at the
+  default text size. `--se-icon` defaults to `1.2em` (it was `15px` / `16px` when comfortable).
+
 ## [0.6.1] - 2026-10-29
 
 ### Fixed

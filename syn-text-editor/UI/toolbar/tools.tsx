@@ -185,7 +185,7 @@ function ColorMenuBase({ kind, title, list, cur, onPick }: ColorMenuProps) {
       style={{ background: colorValue(value, kind) }} onMouseDown={keep}
       onMouseEnter={() => setHover(label)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(label)} onBlur={() => setHover(null)}
       onClick={() => onPick(value)}>
-      {cur === value && <Check size={13} color={kind === "color" ? "#fff" : "var(--se-text)"} />}
+      {cur === value && <Check color={kind === "color" ? "#fff" : "var(--se-text)"} />}
     </button>
   );
   const none = kind === "color" ? "Default" : "None";
