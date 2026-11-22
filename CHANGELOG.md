@@ -8,6 +8,8 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-23
+
 The first stable release. From here on, breaking changes come only with a new major version.
 
 ### Added
@@ -234,7 +236,8 @@ The first release.
 - **Docs** — getting started, configuration, theming, customization, components, right-click menu, storage, API
   reference and the document model, in `docs/`.
 
-[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/ridoysheikh/SynTextEditor/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.8.0...v1.0.0
 [0.8.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/ridoysheikh/SynTextEditor/compare/v0.6.1...v0.7.0
