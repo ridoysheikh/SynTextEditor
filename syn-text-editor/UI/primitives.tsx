@@ -1,8 +1,9 @@
 "use client";
 // ─── UI primitives ────────────────────────────────────────────────────────────
 // The button, popover, menu and modal every tool is built from. Exported so a host composing its own toolbar
-// gets the same look without copying styles. Menus and dialogs are portalled to <body> inside a `.se-layer`
-// carrying the editor's theme class and variables, so they theme with it and escape any overflow.
+// gets the same look without copying styles. Menus and dialogs are portalled inside a `.se-layer` carrying the
+// editor's theme class and variables, so they theme with it and escape any overflow — into the host's dialog when
+// the editor sits in one (a modal keeps clicks and focus inside itself), else into <body>.
 
 import { createContext, createElement, forwardRef, useContext, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -37,8 +38,107 @@ export const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffec
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
+/** Where layers are drawn — see the editor's `portal` option. */
+export type PortalTarget = "auto" | "body" | HTMLElement | (() => HTMLElement | null | undefined);
+
 /** The theme a portalled layer copies from its editor; `anchor` is an element inside the editor. */
-export const LayerContext = createContext<{ className: string; style: CSSProperties; anchor?: { current: HTMLElement | null } }>({ className: "", style: {} });
+export const LayerContext = createContext<{ className: string; style: CSSProperties; anchor?: { current: HTMLElement | null }; portal?: PortalTarget }>({ className: "", style: {} });
+
+/**
+ * A dialog the editor sits in. Modal hosts (Radix, Headless UI, MUI, a native `<dialog>`…) make everything outside
+ * themselves inert — no clicks, no focus, no wheel — so the editor's layers must be drawn inside them.
+ */
+export const PORTAL_HOSTS = 'dialog[open], [data-se-portal], [aria-modal="true"], [role="dialog"], [role="alertdialog"]';
+
+/** The element a layer of the editor at `anchor` is portalled into. */
+export function layerHost(anchor: HTMLElement | null | undefined, portal: PortalTarget = "auto"): HTMLElement {
+  if (typeof portal === "function") return portal() ?? document.body;
+  if (portal && typeof portal === "object") return portal;
+  if (portal === "body") return document.body;
+  // Our own dialogs are never a host: a menu opened from one goes beside it.
+  return (anchor?.closest(PORTAL_HOSTS) as HTMLElement | null) ?? document.body;
+}
+
+/**
+ * Where a layer may draw, in viewport px. Fixed positioning starts from the viewport, unless an ancestor is a
+ * containing block for it (a `transform`, `filter`, `contain`…, which a host dialog often has) — then `x`/`y` is that
+ * box's origin, and when it clips (`overflow`), the room is cut to it.
+ */
+export interface LayerFrame { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number }
+
+function holdsFixed(el: Element): boolean {
+  const st = getComputedStyle(el);
+  return (st.transform !== "none" && st.transform !== "") || (st.perspective !== "none" && st.perspective !== "")
+    || (st.filter !== "none" && st.filter !== "") || (!!st.backdropFilter && st.backdropFilter !== "none")
+    || /paint|layout|strict|content/.test(st.contain || "") || /transform|perspective|filter/.test(st.willChange || "")
+    || (!!st.containerType && st.containerType !== "normal");
+}
+
+export function layerFrame(inside: Element | null | undefined): LayerFrame {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const frame = { x: 0, y: 0, left: 0, top: 0, right: vw, bottom: vh, width: vw, height: vh };
+  const layer = inside?.closest(".se-layer");
+  const probe = layer?.querySelector(":scope > .se-layer-probe");
+  if (!layer || !probe) return frame;
+  const at = probe.getBoundingClientRect();
+  frame.x = at.left;
+  frame.y = at.top;
+  for (let el = layer.parentElement; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+    if (!holdsFixed(el)) continue;
+    const st = getComputedStyle(el);
+    if (st.overflowX !== "visible" || st.overflowY !== "visible") {
+      const r = el.getBoundingClientRect();
+      frame.left = Math.max(0, r.left);
+      frame.top = Math.max(0, r.top);
+      frame.right = Math.min(vw, r.right);
+      frame.bottom = Math.min(vh, r.bottom);
+      frame.width = Math.max(0, frame.right - frame.left);
+      frame.height = Math.max(0, frame.bottom - frame.top);
+    }
+    break;
+  }
+  return frame;
+}
+
+// ── Escape ────────────────────────────────────────────────────────────────────
+// One listener on window, in the capture phase — ahead of a host dialog's own (on document), which would otherwise
+// close the whole dialog when Escape was meant for a menu inside the editor. The newest open thing closes first.
+interface EscapeEntry { close: () => void; within?: () => (Element | null | undefined)[] }
+const escapes: EscapeEntry[] = [];
+function onEscape(e: KeyboardEvent) {
+  if (e.key !== "Escape" || !escapes.length) return;
+  for (let i = escapes.length - 1; i >= 0; i--) {
+    const it = escapes[i];
+    const scope = it.within?.();
+    if (scope && !scope.some((el) => el && e.target instanceof Node && el.contains(e.target))) continue;
+    e.preventDefault();
+    e.stopPropagation();
+    it.close();
+    return;
+  }
+}
+/**
+ * While `active`, Escape calls `close` — and goes no further (not to the editor, not to a dialog around it).
+ * `within` limits it to keys pressed inside those elements.
+ */
+export function useEscape(active: boolean, close: () => void, within?: () => (Element | null | undefined)[]) {
+  const ref = useRef(close);
+  ref.current = close;
+  const scope = useRef(within);
+  scope.current = within;
+  useEffect(() => {
+    if (!active || typeof window === "undefined") return;
+    const entry: EscapeEntry = { close: () => ref.current(), within: scope.current ? () => scope.current!() : undefined };
+    if (!escapes.length) window.addEventListener("keydown", onEscape, true);
+    escapes.push(entry);
+    return () => {
+      const i = escapes.indexOf(entry);
+      if (i >= 0) escapes.splice(i, 1);
+      if (!escapes.length) window.removeEventListener("keydown", onEscape, true);
+    };
+  }, [active]);
+}
 
 /**
  * Whether an element sits in a dark theme it inherits — a `.dark` ancestor (Tailwind's class strategy) with no
@@ -55,10 +155,16 @@ export function inheritsDark(el: HTMLElement | null | undefined): boolean {
  * the darkness it inherits from where it sits, which a portal in <body> would otherwise lose.
  */
 export function Layer({ children }: { children: ReactNode }) {
-  const { className, style, anchor } = useContext(LayerContext);
+  const { className, style, anchor, portal } = useContext(LayerContext);
   if (typeof document === "undefined") return null;
   const inherited = !/\bse-(dark|light|auto)\b/.test(className) && inheritsDark(anchor?.current) ? "se-dark" : "";
-  return createPortal(<div className={cx("se-layer", className, inherited)} style={style}>{children}</div>, document.body);
+  return createPortal(
+    <div className={cx("se-layer", className, inherited)} style={style}>
+      <span className="se-layer-probe" aria-hidden />
+      {children}
+    </div>,
+    layerHost(anchor?.current, portal),
+  );
 }
 
 /** Keeps the editor's selection when a toolbar control is clicked. */
@@ -91,8 +197,11 @@ export function TooltipHost({ children }: { children: (show: (t: { text: string;
 }
 
 function TooltipBase({ text, kbd, rect }: TooltipProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [off, setOff] = useState({ x: 0, y: 0 });
+  useIsoLayoutEffect(() => { const f = layerFrame(ref.current); setOff({ x: f.x, y: f.y }); }, [rect]);
   return (
-    <div className="se-tip" role="tooltip" style={{ left: Math.max(4, rect.left + rect.width / 2), top: rect.bottom + 6, transform: "translateX(-50%)" }}>
+    <div ref={ref} className="se-tip" role="tooltip" style={{ left: Math.max(4, rect.left + rect.width / 2) - off.x, top: rect.bottom + 6 - off.y, transform: "translateX(-50%)" }}>
       {text}{kbd && <kbd>{kbd}</kbd>}
     </div>
   );
@@ -170,10 +279,11 @@ function PopoverBase({ anchor, open, onClose, children, align = "start", classNa
       const a = anchor.getBoundingClientRect();
       const w = el?.offsetWidth ?? 200;
       const h = el?.scrollHeight ?? 200;
+      const f = layerFrame(el);
       let left = align === "end" ? a.right - w : align === "center" ? a.left + a.width / 2 - w / 2 : a.left;
-      left = Math.max(6, Math.min(left, window.innerWidth - w - 6));
-      const y = fitAxis(a.top, a.bottom, h, window.innerHeight);
-      setPos({ left, top: y.at, room: y.max });
+      left = Math.max(f.left + 6, Math.min(left, f.right - w - 6));
+      const y = fitAxis(a.top - f.top, a.bottom - f.top, h, f.height);
+      setPos({ left: left - f.x, top: y.at + f.top - f.y, room: y.max });
     };
     place();
     const raf = requestAnimationFrame(() => {
@@ -200,11 +310,10 @@ function PopoverBase({ anchor, open, onClose, children, align = "start", classNa
       if (ref.current?.contains(t) || anchor?.contains(t)) return;
       onClose();
     };
-    const key = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } };
     document.addEventListener("mousedown", down, true);
-    document.addEventListener("keydown", key, true);
-    return () => { document.removeEventListener("mousedown", down, true); document.removeEventListener("keydown", key, true); };
+    return () => { document.removeEventListener("mousedown", down, true); };
   }, [open, anchor, onClose]);
+  useEscape(!!open, onClose);
 
   if (!open) return null;
   return (
@@ -269,7 +378,6 @@ function ModalBase({ title, onClose, children, footer, width = 520, label, headE
     const q = (s: string) => box.current?.querySelector<HTMLElement>(s);
     (q("[data-autofocus]") ?? q("input:not([type=hidden]):not([hidden]), textarea, select") ?? q(".se-modal-body button") ?? q("[data-close]"))?.focus();
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.stopPropagation(); onClose(); }
       if (e.key === "Tab" && box.current) {                     // keep Tab inside the dialog
         const f = Array.from(box.current.querySelectorAll<HTMLElement>("button:not(:disabled), input, textarea, select, [tabindex]:not([tabindex='-1'])"));
         if (!f.length) return;
@@ -285,9 +393,17 @@ function ModalBase({ title, onClose, children, footer, width = 520, label, headE
       if (!prev?.closest?.(".se-surface")) prev?.focus?.({ preventScroll: true });
     };
   }, [onClose]);
+  useEscape(true, onClose);
+  // Inside a host's dialog the layer sits in that dialog's box: the backdrop still covers the screen.
+  const backdrop = useRef<HTMLDivElement>(null);
+  const [cover, setCover] = useState<CSSProperties | undefined>(undefined);
+  useIsoLayoutEffect(() => {
+    const f = layerFrame(backdrop.current);
+    setCover(f.x || f.y ? { left: -f.x, top: -f.y, right: "auto", bottom: "auto", width: "100vw", height: "100vh" } : undefined);
+  }, []);
   return (
     <Layer>
-      <div className="se-backdrop" data-variant={variant} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div ref={backdrop} className="se-backdrop" style={cover} data-variant={variant} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
         <div ref={box} role="dialog" aria-modal="true" aria-label={label ?? (typeof title === "string" ? title : undefined)} className="se-modal" data-variant={variant} data-kind={kind} style={variant === "sheet" ? undefined : { maxWidth: width }}>
           <div className="se-modal-head">
             <h2 className="se-modal-title">{title}</h2>

@@ -8,7 +8,7 @@ import "./styles/globals.lib.css";
 // ── The editor ────────────────────────────────────────────────────────────────
 export { SynTextEditor, createSynTextEditor, blockFromAsset, LIVE_OPTIONS } from "./SynTextEditor";
 export type {
-  SynTextEditorConfig, UploadConfig, ThemeMode, ThemeVars, Slot, EventName, Modal as EditorModal, Upload, UIState, LiveOptions,
+  SynTextEditorConfig, CodeConfig, UploadConfig, ThemeMode, ThemeVars, Slot, EventName, Modal as EditorModal, Upload, UIState, LiveOptions,
   ContextMenuConfig, ContextMenuContext, ContextMenuItem, ContextTarget, OpenContextMenu, CaretContext, DialogKind, DialogVariant,
 } from "./SynTextEditor";
 
@@ -49,12 +49,14 @@ export {
 } from "./UI/toolbar/tools";
 export {
   ToolButton, PopoverButton, Popover, MenuItem, MenuSeparator, MenuLabel, Modal, Button, Field, Slider, Tooltip, Divider,
-  Layer, LayerContext, ComponentsContext, overridable, keep, cx,
+  Layer, LayerContext, ComponentsContext, overridable, keep, cx, layerHost, layerFrame, useEscape, PORTAL_HOSTS,
 } from "./UI/primitives";
+export type { PortalTarget, LayerFrame } from "./UI/primitives";
 export { ColorPicker, hexToHsv, hsvToHex, normalizeHex } from "./UI/ColorPicker";
 export { MediaGallery } from "./UI/media/MediaGallery";
 export { LinkDialog, MediaDetailsDialog, PreviewDialog, FindBar, StatusBar } from "./UI/dialogs";
 export { FloatBar } from "./UI/FloatBar";
+export { CodeBar } from "./UI/CodeBar";
 
 // ── Everything the viewer entry has (document model, HTML, rendering) ───────
 export * from "./view-entry";

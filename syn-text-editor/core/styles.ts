@@ -4,6 +4,7 @@
  * colours read `--se-c-*` / `--se-hl-*` variables, so a theme recolours stored documents too.
  */
 import { BLOCK_SIZE, type Block, type Marks } from "./model";
+import { codeLabel } from "./code";
 
 export interface Swatch { name: string; label: string; hex: string }
 
@@ -187,6 +188,13 @@ export function blockData(b: Block): Record<string, string> {
   if (b.list === "check" && b.checked) d.checked = "";
   if (b.wrap) d.wrap = "";
   if (b.w) d.free = "";
+  if (b.type === "code") {
+    if (b.lang) d.lang = b.lang;
+    if (b.title) d.title = b.title;
+    d.label = codeLabel(b);                       // what the header shows (derived — never read back)
+    if (b.lineNumbers === false) d.nolines = "";
+    if (b.lineWrap) d.linewrap = "";
+  }
   return d;
 }
 

@@ -38,6 +38,14 @@
   --se-code-bg:      #f1f3f5;
   --se-code-text:    #c2255c;
   --se-pre-bg:       #f6f8fa;
+  /* Code blocks */
+  --se-code-head:    #f0f2f5;   /* the header strip */
+  --se-code-gutter:  #8c95a3;   /* line numbers */
+  --se-code-line:    #eef2fb;   /* the caret's line */
+  --se-tk-c: #6e7781; --se-tk-s: #0a3069; --se-tk-n: #0550ae; --se-tk-k: #cf222e; --se-tk-t: #953800; --se-tk-l: #0550ae;
+  --se-tk-f: #8250df; --se-tk-p: #0550ae; --se-tk-g: #116329; --se-tk-m: #8250df; --se-tk-v: #953800; --se-tk-o: #cf222e;
+  --se-tk-r: #0a3069; --se-tk-h: #0550ae; --se-tk-a: #116329; --se-tk-a-bg: #dafbe1; --se-tk-d: #82071e; --se-tk-d-bg: #ffebe9;
+
   --se-quote-bar:    #d3d8e0;
   --se-quote-text:   #5f6672;
   --se-table-border: #d3d8e0;
@@ -85,6 +93,13 @@
   --se-code-bg:      #23262e;
   --se-code-text:    #f783ac;
   --se-pre-bg:       #1a1c22;
+  --se-code-head:    #1e2128;
+  --se-code-gutter:  #6b7280;
+  --se-code-line:    #22262f;
+  --se-tk-c: #8b949e; --se-tk-s: #a5d6ff; --se-tk-n: #79c0ff; --se-tk-k: #ff7b72; --se-tk-t: #ffa657; --se-tk-l: #79c0ff;
+  --se-tk-f: #d2a8ff; --se-tk-p: #79c0ff; --se-tk-g: #7ee787; --se-tk-m: #d2a8ff; --se-tk-v: #ffa657; --se-tk-o: #ff7b72;
+  --se-tk-r: #a5d6ff; --se-tk-h: #79c0ff; --se-tk-a: #aff5b4; --se-tk-a-bg: #033a16; --se-tk-d: #ffdcd7; --se-tk-d-bg: #67060c;
+
   --se-quote-bar:    #3d4250;
   --se-quote-text:   #a3aab6;
   --se-table-border: #343844;
@@ -116,5 +131,11 @@
     --se-c-teal: #3bc9db; --se-c-blue: #4dabf7; --se-c-purple: #9775fa; --se-c-pink: #f06595;
     --se-hl-yellow: #5c4a00; --se-hl-green: #1b4d2a; --se-hl-teal: #0b4a4f; --se-hl-blue: #123d66; --se-hl-purple: #352a66;
     --se-hl-pink: #5c1f3b; --se-hl-red: #5c1f1f; --se-hl-orange: #5c3310; --se-hl-gray: #343844;
+    --se-code-head:    #1e2128;
+    --se-code-gutter:  #6b7280;
+    --se-code-line:    #22262f;
+    --se-tk-c: #8b949e; --se-tk-s: #a5d6ff; --se-tk-n: #79c0ff; --se-tk-k: #ff7b72; --se-tk-t: #ffa657; --se-tk-l: #79c0ff;
+    --se-tk-f: #d2a8ff; --se-tk-p: #79c0ff; --se-tk-g: #7ee787; --se-tk-m: #d2a8ff; --se-tk-v: #ffa657; --se-tk-o: #ff7b72;
+    --se-tk-r: #a5d6ff; --se-tk-h: #79c0ff; --se-tk-a: #aff5b4; --se-tk-a-bg: #033a16; --se-tk-d: #ffdcd7; --se-tk-d-bg: #67060c;
   }
 }

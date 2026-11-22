@@ -71,6 +71,7 @@ Used by everything else — replacing one restyles every place it appears.
 | `FindBar` | `{ editor }` |
 | `StatusBar` | `{ editor, className?, style? }` |
 | `FloatBar` | `{ editor, surface, scroller }` — the bar over a selected image or table |
+| `CodeBar` | `{ editor, surface, scroller }` — the bar over a code block's header (language, file name, line numbers, wrap, copy); `editor.getState().code` is the caret's block |
 | `ContextMenu` | `{ editor }` — read `editor.getUI().contextMenu` (`{ ctx, items }`), close with `editor.closeContextMenu()` |
 | `MediaGallery` | `{ editor, onClose, filter?, replace? }` |
 | `LinkDialog` · `PreviewDialog` | `{ editor, onClose }` |

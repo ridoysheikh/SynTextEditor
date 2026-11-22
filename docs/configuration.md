@@ -57,6 +57,29 @@ function Note({ dark, compact, locked }: Props) {
 | `spellCheck` | `boolean` | `true` | The browser's spell check. |
 | `id` | `string` | — | On the editable element, for `<label htmlFor>`. |
 | `ariaLabel` | `string` | `"Rich text editor"` | Accessible name. |
+| `code` | `{ highlight?, languages? }` | colours on, every language | [Code blocks](code-blocks.md): `highlight: false` draws them uncoloured; `languages` lists the ids the language menu offers. Live. |
+| `portal` | `"auto" \| "body" \| HTMLElement \| () => HTMLElement` | `"auto"` | Where menus, pickers and dialogs are drawn — see below. Live. |
+
+### Where menus and dialogs go
+
+The editor's menus, colour picker, tooltips, right-click menu and dialogs float above the page. With `portal: "auto"`
+(the default) they're drawn **inside the nearest dialog around the editor**: a `<dialog>`, an element with
+`role="dialog"` / `role="alertdialog"` / `aria-modal="true"`, or one you mark with `data-se-portal`. Otherwise they go
+into `<body>`.
+
+This matters when the editor sits in a host's modal: a Radix / shadcn `Dialog` or `Sheet`, Headless UI, MUI, React
+Aria or a native modal `<dialog>`. Those make everything outside themselves inert. They switch pointer events off
+on `<body>`, keep focus inside, and block scrolling. A picker drawn in `<body>` would show but ignore clicks (the
+pointer falls through to the text behind it), and its fields couldn't keep focus. Drawn inside the dialog, it works
+as usual:
+
+- Positions account for a dialog that is transformed (centred with `translate`) or clips (`overflow: hidden`): menus
+  stay inside its box and scroll when there's no room, and a dialog's backdrop still covers the screen.
+- Escape closes the editor's open menu or dialog first (then the find bar, then full screen) and goes no further, so
+  the host's dialog stays open. With nothing of the editor's open, Escape reaches the host as usual.
+- In `<body>`, layers still turn pointer events back on for themselves (`.se-layer { pointer-events: auto }`).
+
+`"body"` always uses `<body>`. Pass an element, or a function returning one, to choose the container yourself.
 
 ## Toolbar and frame
 

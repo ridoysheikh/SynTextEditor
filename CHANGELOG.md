@@ -8,6 +8,54 @@ Install any version from its [GitHub release](https://github.com/ridoysheikh/Syn
 
 ## [Unreleased]
 
+The first stable release. From here on, breaking changes come only with a new major version.
+
+### Added
+
+- **Code blocks are editor panes**: a header with the file name or language, line numbers, syntax colours, the
+  caret's line highlighted, and long lines scroll sideways (or wrap). 26 languages with aliases, highlighted by a
+  small built-in tokenizer (no dependency). The language is guessed when none is set. See `docs/code-blocks.md`.
+- **The code bar** over a code block's header: language menu (type to filter), file name, line numbers, wrap and
+  *Copy code*. It is the `CodeBar` slot.
+- **Editing code like an IDE**: Enter keeps the indentation (one step more after `{ [ ( :`, and a closing bracket
+  moves to its own line). Tab / Shift+Tab indent and outdent every selected line. Typing ```` ```ts ```` + space opens
+  a code block in that language.
+- Code block fields `lang`, `title`, `lineNumbers: false` and `lineWrap: true`. `editor.setCode(patch, b?)`,
+  `editor.copyCode(b?)` and `EditorState.code` (the caret's code block). The `code` option
+  (`{ highlight?, languages? }`).
+- A Copy button on code blocks in `<SynTextView>` (`code={{ copy: false }}` drops it) and, for HTML from `toHTML`,
+  `mountCode(root)`. Also `codeTextOf`, `copyText`, `CODE_LANGUAGES`, `codeLanguage`, `detectLanguage`, `tokenize`,
+  `codeLines`, `blockLanguage` and `codeLabel`. `toHTML(doc, { code: { highlight: false } })`.
+- **`portal` option**: where menus, pickers, tooltips and dialogs are drawn. `"auto"` (default) draws them inside
+  the nearest dialog around the editor (`<dialog>`, `[role="dialog"]`, `[aria-modal="true"]`, `[data-se-portal]`).
+  `"body"`, an element or a function choose for you. Exported helpers: `layerHost`, `layerFrame`, `useEscape`,
+  `PORTAL_HOSTS`.
+- Theme variables for code: `--se-code-head`, `--se-code-gutter`, `--se-code-line`, the `--se-tk-*` token colours
+  (light and dark in `theme.css`), and the sizes `--se-code-head-h`, `--se-code-gutter-w` and `--se-code-x`.
+
+### Changed
+
+- **BREAKING:** class-mode HTML writes a code block as `<pre data-label …><code class="se-code-body">` with one
+  `<span class="se-ln">` per line, ending in a real newline (no `<br>`), and token classes `se-tk-*`. `parseHtml`
+  reads both the new and the old form, and `<pre>` from other sites (`language-*` classes, one `<div>` per line).
+  Code stored before keeps its plain look until it is saved again.
+- **BREAKING:** menus and dialogs are no longer always portalled to `<body>`. Inside a host's dialog they're drawn in
+  that dialog (see `portal`). `.se-layer` is now out of the flow (`position: absolute`, zero size) wherever it sits.
+- Escape is handled in the capture phase on `window`. The newest open menu or dialog of the editor closes first, then
+  the find bar, then full screen, and the key goes no further. The right-click menu takes its keys the same way.
+- Enter on an empty last line of a code block leaves it, even when the line holds only indentation.
+
+### Fixed
+
+- **The editor inside a modal** (Radix/shadcn `Dialog` or `Sheet`, Headless UI, MUI, a native `<dialog>`):
+  - the colour picker, menus, the right-click menu and dialogs showed but ignored clicks (the pointer fell through
+    to the text behind them)
+  - their fields lost focus as soon as they got it
+  - Escape closed the whole host dialog
+- Menus, tooltips and the right-click menu are placed correctly in a dialog that is transformed (centred with
+  `translate`) or clips its content, and stay inside its box. A dialog's backdrop covers the screen there too.
+- A caret just after a line break is drawn at the start of the next line, not the end of the line before.
+
 ## [0.8.0] - 2026-10-29
 
 ### Added

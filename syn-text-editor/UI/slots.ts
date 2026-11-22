@@ -137,6 +137,8 @@ export interface SynComponents {
   FindBar: Replacement<EditorPartProps>;
   StatusBar: Replacement<StatusBarProps>;
   FloatBar: Replacement<FloatBarProps>;
+  /** The bar over a code block's header (language, file name, line numbers, wrap, copy). */
+  CodeBar: Replacement<FloatBarProps>;
   ContextMenu: Replacement<EditorPartProps>;
   MediaGallery: Replacement<MediaGalleryProps>;
   LinkDialog: Replacement<DialogProps>;
@@ -153,6 +155,6 @@ export type ComponentsConfig = Partial<SynComponents>;
 export type SlotName = Exclude<keyof SynComponents, "tools">;
 export const SLOT_NAMES: readonly SlotName[] = [
   "Button", "ToolButton", "Popover", "Modal", "MenuItem", "MenuSeparator", "MenuLabel", "Field", "Slider", "Tooltip",
-  "Divider", "ColorPicker", "ColorMenu", "VideoPlayer", "Toolbar", "FindBar", "StatusBar", "FloatBar", "ContextMenu", "MediaGallery",
+  "Divider", "ColorPicker", "ColorMenu", "VideoPlayer", "Toolbar", "FindBar", "StatusBar", "FloatBar", "CodeBar", "ContextMenu", "MediaGallery",
   "LinkDialog", "MediaDetailsDialog", "PreviewDialog",
 ];

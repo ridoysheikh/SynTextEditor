@@ -5,7 +5,9 @@
 
 import { createElement, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { VideoPlayer, type VideoPlayerProps } from "./VideoPlayer";
-import { isAtom, toDoc, type Block, type Cell, type RichDoc, type Span } from "../core/model";
+import { blockText, isAtom, toDoc, type Block, type Cell, type RichDoc, type Span } from "../core/model";
+import { blockLanguage, codeLines, type CodeOptions } from "../core/code";
+import { CodeCopy } from "./CodeCopy";
 import { blockClass, blockData, fontFaceCSS, fontStylesheets, formatBytes, listMarkers, mediaLayout, resolveFonts, spanClass, spanStyle, usedFonts, type FontsConfig } from "../core/styles";
 
 export interface SynTextViewProps {
@@ -28,12 +30,14 @@ export interface SynTextViewProps {
    * the props plus `Default`, the library's player.
    */
   components?: { VideoPlayer?: ComponentType<VideoPlayerProps & { Default: ComponentType<VideoPlayerProps> }> };
+  /** Code blocks: `highlight: false` leaves them uncoloured, `copy: false` drops the Copy button. */
+  code?: CodeOptions & { copy?: boolean };
 }
 
 const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
 const dataProps = (b: Block) => Object.fromEntries(Object.entries(blockData(b)).map(([k, v]) => [`data-${k}`, v]));
 
-export function SynTextView({ value, className, style, theme = "inherit", density, fallback = null, linkTarget = "_blank", fonts, components }: SynTextViewProps) {
+export function SynTextView({ value, className, style, theme = "inherit", density, fallback = null, linkTarget = "_blank", fonts, components, code }: SynTextViewProps) {
   const doc = toDoc(value);
   if (!doc || !doc.blocks.some((b) => isAtom(b) || b.spans.some((s) => s.text.trim()))) return <>{fallback}</>;
   const markers = listMarkers(doc.blocks);
@@ -43,14 +47,14 @@ export function SynTextView({ value, className, style, theme = "inherit", densit
     <div className={cx("se-content", theme === "dark" && "se-dark", theme === "light" && "se-light", density === "comfortable" && "se-comfortable", className)} style={style}>
       {fontStylesheets(used).map((href) => <link key={href} rel="stylesheet" href={href} />)}
       {faces && <style>{faces}</style>}
-      {doc.blocks.map((b, i) => <BlockView key={i} block={b} marker={markers[i]} target={linkTarget} player={components?.VideoPlayer} />)}
+      {doc.blocks.map((b, i) => <BlockView key={i} block={b} marker={markers[i]} target={linkTarget} player={components?.VideoPlayer} code={code} copy={code?.copy !== false} />)}
     </div>
   );
 }
 
 type PlayerSlot = NonNullable<SynTextViewProps["components"]>["VideoPlayer"];
 
-function BlockView({ block: b, marker, target, player: Player }: { block: Block; marker: string | null; target: string; player?: PlayerSlot }) {
+function BlockView({ block: b, marker, target, player: Player, code, copy }: { block: Block; marker: string | null; target: string; player?: PlayerSlot; code?: CodeOptions; copy: boolean }) {
   const cls = blockClass(b);
   const data = dataProps(b);
   switch (b.type) {
@@ -102,6 +106,20 @@ function BlockView({ block: b, marker, target, player: Player }: { block: Block;
       );
     }
   }
+  if (b.type === "code" && !b.list) {
+    return (
+      <pre className={cls} {...data}>
+        <code className="se-code-body">
+          {codeLines(b.spans, blockLanguage(b), code).map((line, i) => (
+            <span key={i} className="se-ln">
+              {line.map((pc, j) => <SpanView key={j} span={{ ...pc.marks, text: pc.text }} target={target} token={pc.tk} />)}
+            </span>
+          ))}
+        </code>
+        {copy && <CodeCopy text={blockText(b)} />}
+      </pre>
+    );
+  }
   const Tag = b.type === "h1" || b.type === "h2" || b.type === "h3" || b.type === "h4" ? b.type
     : b.type === "quote" ? "blockquote" : b.type === "code" ? "pre" : "div";
   const list = b.list ? { role: "listitem", "data-marker": marker ?? "", ...(b.list === "check" ? { "aria-checked": !!b.checked } : {}) } : {};
@@ -112,10 +130,10 @@ function BlockView({ block: b, marker, target, player: Player }: { block: Block;
   );
 }
 
-function SpanView({ span, target }: { span: Span; target: string }) {
+function SpanView({ span, target, token }: { span: Span; target: string; token?: string }) {
   const { text, ...marks } = span;
   const inner = marks.script ? createElement(marks.script, null, text) : text;
-  const cls = spanClass(marks) || undefined;
+  const cls = cx(spanClass(marks), token && `se-tk-${token}`) || undefined;
   const st = spanStyle(marks);
   const style = Object.keys(st).length ? st as CSSProperties : undefined;
   if (marks.link) return <a href={marks.link} target={target} rel="noopener noreferrer nofollow" className={cls} style={style}>{inner}</a>;

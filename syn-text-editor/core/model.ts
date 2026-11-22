@@ -7,6 +7,7 @@
  *                          { type: "p", list: "bullet", spans: [{ text: "Cotton ", bold: true }, { text: "100%", size: 18 }] },
  *                          { type: "image", src: "https://…/a.jpg", width: 60, spans: [] }] }
  */
+import { cleanLang } from "./code";
 
 export type TextType = "p" | "h1" | "h2" | "h3" | "h4" | "quote" | "code";
 export type AtomType = "hr" | "image" | "video" | "file" | "table";
@@ -67,6 +68,15 @@ export interface Block {
   asset?: string;
   /** video: the thumbnail shown before it plays — an image address */
   poster?: string;
+  // ── code ──
+  /** code: the language (`CODE_LANGUAGES` id); absent = guessed from the text */
+  lang?: string;
+  /** code: a file name or title shown in the header instead of the language */
+  title?: string;
+  /** code: `false` hides the line numbers (shown by default) */
+  lineNumbers?: false;
+  /** code: long lines wrap instead of scrolling sideways */
+  lineWrap?: true;
   // ── table ──
   rows?: Cell[][];
   /** the first row is a header */
@@ -266,6 +276,13 @@ export function cleanBlock(raw: unknown, schema: Schema = FULL_SCHEMA): Block | 
   }
   if (!ATOMS.has(type)) {
     if (Array.isArray(r.spans)) b.spans = cleanSpans(r.spans, schema);
+    if (type === "code") {
+      const lang = cleanLang(r.lang);
+      if (lang) b.lang = lang;
+      if (typeof r.title === "string" && r.title.trim()) b.title = r.title.trim().slice(0, 80);
+      if (r.lineNumbers === false) b.lineNumbers = false;
+      if (r.lineWrap === true) b.lineWrap = true;
+    }
     return b;
   }
   if (type === "image" || type === "video" || type === "file") {

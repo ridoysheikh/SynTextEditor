@@ -197,10 +197,15 @@ it in `className="se-scope"` to give it the editor's variables.
 | Link · find | Ctrl+K · Ctrl+F |
 | Copy / apply formatting | Ctrl+Alt+C / V |
 | Paste as plain text | Ctrl+Shift+V |
+| In a code block | Enter keeps the indentation · Tab / Shift+Tab indent / outdent the selected lines · Enter on an empty last line leaves |
 | In a table | Tab / Shift+Tab between cells (Tab past the last adds a row) |
 | Selected image | arrows step off, Delete removes, drag the corner to resize |
 
-Typing `# `, `## `, `- `, `1. `, `[] `, `> ` or ```` ``` ```` + space at the start of a line formats it.
+Typing `# `, `## `, `- `, `1. `, `[] `, `> ` or ```` ``` ```` + space at the start of a line formats it (```` ```ts ```` makes a
+TypeScript [code block](docs/code-blocks.md): numbered lines, colours, a language and file-name bar, Copy).
+
+Inside a host's modal (a Radix/shadcn `Dialog` or `Sheet`, Headless UI, MUI, `<dialog>`), menus and dialogs are drawn
+inside it, so clicks and focus work there — see [`portal`](docs/configuration.md#where-menus-and-dialogs-go).
 
 ## The document
 

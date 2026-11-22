@@ -7,7 +7,7 @@ import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { createElement } from "react";
 import { toHTML, type HtmlOptions } from "./core/html";
 import {
-  docLength, docToPlain, docWords, emptyDoc, isEmptyDoc, safePoster, schemaOf, toDoc,
+  blockText, docLength, docToPlain, docWords, emptyDoc, isEmptyDoc, safePoster, schemaOf, toDoc,
   type Align, type Block, type Format, type ListKind, type RichDoc, type Schema, type TextType, type Toggle,
 } from "./core/model";
 import type { Sel } from "./core/ops";
@@ -17,6 +17,9 @@ import type { ComponentsConfig } from "./UI/slots";
 import { COLORS, HIGHLIGHTS, SIZES, loadFonts, resolveFonts, type FontOption, type FontsConfig, type Swatch } from "./core/styles";
 import { RichEngine, type EditorState } from "./editor/engine";
 import { captureFrame } from "./view/player";
+import { copyText } from "./view/copy";
+import type { CodeOptions } from "./core/code";
+import type { PortalTarget } from "./UI/primitives";
 import type { ContextItemId } from "./contextMenu";
 import { PRESETS, type PresetName, type ToolbarLayout } from "./presets";
 
@@ -163,6 +166,22 @@ export interface SynTextEditorConfig {
    * offset is `--se-sheet-top`). An object chooses per dialog: `{ default: "dialog", gallery: "sheet" }`.
    */
   dialogs?: DialogVariant | Partial<Record<"default" | DialogKind, DialogVariant>>;
+  /**
+   * Code blocks: `highlight: false` draws them without token colours; `languages` lists the ids (`CODE_LANGUAGES`)
+   * the language menu offers, in that order (default: all). Live.
+   */
+  code?: CodeConfig;
+  /**
+   * Where menus, pickers and dialogs are drawn. `"auto"` (default): inside the nearest dialog around the editor
+   * (`<dialog>`, `[role="dialog"]`, `[aria-modal]` or your own `[data-se-portal]`), else `<body>` — so they work in a
+   * host's modal, which keeps clicks and focus inside itself. `"body"` always uses `<body>`; an element (or a
+   * function returning one) puts them there.
+   */
+  portal?: PortalTarget;
+}
+
+export interface CodeConfig extends CodeOptions {
+  languages?: string[];
 }
 
 /** Where the caret is — see `SynTextEditor.getCaretContext()`. */
@@ -211,7 +230,7 @@ const isAdapter = (s: StorageAdapter | RestStorageOptions): s is StorageAdapter 
 export const LIVE_OPTIONS = [
   "preset", "formats", "toolbar", "statusbar", "stickyToolbar", "toolbarWrap", "placeholder", "maxLength", "minHeight",
   "maxHeight", "variant", "spellCheck", "ariaLabel", "theme", "density", "vars", "classNames", "styles", "colors",
-  "highlights", "fonts", "sizes", "storage", "upload", "contextMenu", "components", "dialogs", "embedUrls",
+  "highlights", "fonts", "sizes", "storage", "upload", "contextMenu", "components", "dialogs", "embedUrls", "code", "portal",
 ] as const satisfies readonly (keyof SynTextEditorConfig)[];
 export type LiveOptions = Pick<SynTextEditorConfig, (typeof LIVE_OPTIONS)[number]>;
 
@@ -315,11 +334,14 @@ export class SynTextEditor {
   // ── mounting (render.tsx calls these) ────────────────────────────────────
   /** Mount the engine on a surface element. Returns the teardown. */
   attach(surface: HTMLElement): () => void {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this;
     const engine = new RichEngine(surface, this.doc, {
       schema: this.schema,
       readOnly: this.config.readOnly,
       history: this.config.history,
       embedUrls: () => !!this.config.embedUrls,
+      code: { get highlight() { return self.config.code?.highlight; } },
       onChange: (d) => {
         this.doc = d;
         const out = isEmptyDoc(d) ? null : d;
@@ -361,7 +383,7 @@ export class SynTextEditor {
   /** The document as it stands, empty or not. */
   getDoc(): RichDoc { return this.engine?.doc ?? this.doc; }
   getJSON(): string { return JSON.stringify(this.getDoc()); }
-  getHTML(opts?: HtmlOptions): string { return toHTML(this.getDoc(), opts); }
+  getHTML(opts?: HtmlOptions): string { return toHTML(this.getDoc(), { code: this.config.code, ...opts }); }
   getText(): string { return docToPlain(this.getDoc()); }
   getLength(): number { return docLength(this.getDoc()); }
   getWords(): number { return docWords(this.getDoc()); }
@@ -416,6 +438,14 @@ export class SynTextEditor {
   setFont(f: string | null) { this.engine?.setFont(f); }
   setSize(px: number | null) { this.engine?.setSize(px); }
   setBlock(type: TextType) { this.engine?.setBlock(type); }
+  /** Change the code block the caret is in (or block `b`): `{ lang, title, lineNumbers: false, lineWrap: true }`. */
+  setCode(patch: Pick<Block, "lang" | "title" | "lineNumbers" | "lineWrap">, b?: number) { this.engine?.setCode(patch, b); }
+  /** Copy a code block's text (the caret's, or block `b`) to the clipboard. Resolves false when the browser refuses. */
+  async copyCode(b: number | null = this.getState()?.code ?? null): Promise<boolean> {
+    const blk = b === null ? undefined : this.doc.blocks[b];
+    if (blk?.type !== "code") return false;
+    return copyText(blockText(blk));
+  }
   setAlign(a: Align) { this.engine?.setAlign(a); }
   toggleList(kind: ListKind) { this.engine?.toggleList(kind); }
   indent(delta = 1) { this.engine?.indent(delta); }

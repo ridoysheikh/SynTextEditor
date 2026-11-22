@@ -59,6 +59,8 @@ Each acts on the selection, or — with a bare caret — on what's typed next.
 | `setFont(stack)` | CSS font-family; `null` clears |
 | `setSize(px)` | 8–96; `null` back to the block's size |
 | `setBlock(type)` | `"p" \| "h1" \| "h2" \| "h3" \| "h4" \| "quote" \| "code"` |
+| `setCode({ lang?, title?, lineNumbers?, lineWrap? }, b?)` | change the caret's code block (or block `b`) — [code blocks](code-blocks.md) |
+| `copyCode(b?)` | a code block's text to the clipboard; resolves `true` / `false` |
 | `setAlign(a)` | `"left" \| "center" \| "right" \| "justify"` (aligns a selected image too) |
 | `toggleList(kind)` | `"bullet" \| "ordered" \| "check"` |
 | `indent(delta = 1)` | list nesting, `-1` to step out |
@@ -232,6 +234,8 @@ From `@syntext/react/view` (and the main entry).
 
 | Function | |
 |---|---|
+| `mountCode(root)` · `codeTextOf(pre)` · `copyText(text)` | the Copy button on [code blocks](code-blocks.md#in-html) in HTML from `toHTML` · a drawn block's text · copy with a fallback |
+| `CODE_LANGUAGES` · `codeLanguage(name)` · `detectLanguage(text)` · `tokenize(text, lang)` · `codeLines(spans, lang)` · `blockLanguage(b)` · `codeLabel(b)` | [code blocks](code-blocks.md#functions) |
 | `toHTML(doc, { mode?, wrap? })` | `"class"` (default): `se-*` classes, wrapped in `<div class="se-content">` unless `wrap: false` — needs the stylesheets. `"inline"`: self-contained inline styles, for email and other apps. Text and attributes are escaped. |
 | `parseHtml(html, schema?)` | HTML → blocks, filtered by a schema (browser only — uses `DOMParser`) |
 | `toDoc(value, schema?)` | anything stored → a clean `RichDoc` or null |

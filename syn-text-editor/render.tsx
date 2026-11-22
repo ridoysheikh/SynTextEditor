@@ -8,10 +8,11 @@ import { useEditorValue } from "./hooks";
 import { SynTextEditor } from "./SynTextEditor";
 import { FindBar, LinkDialog, MediaDetailsDialog, PreviewDialog, StatusBar } from "./UI/dialogs";
 import { FloatBar } from "./UI/FloatBar";
+import { CodeBar } from "./UI/CodeBar";
 import { ContextMenu } from "./UI/ContextMenu";
 import "./contextMenu";
 import { MediaGallery } from "./UI/media/MediaGallery";
-import { ComponentsContext, cx, LayerContext, TooltipHost } from "./UI/primitives";
+import { ComponentsContext, cx, LayerContext, TooltipHost, useEscape } from "./UI/primitives";
 import { Toolbar } from "./UI/toolbar/Toolbar";
 import { PRESETS } from "./presets";
 
@@ -21,6 +22,7 @@ const len = (v: number | string | undefined) => (typeof v === "number" ? `${v}px
 export function EditorView({ editor, className, style }: { editor: SynTextEditor; className?: string; style?: CSSProperties }) {
   const c = editor.config;
   const surface = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   const [surfaceEl, setSurfaceEl] = useState<HTMLDivElement | null>(null);
   const ui = useEditorValue(editor, ["ui"], (e) => e.getUI());
@@ -32,19 +34,19 @@ export function EditorView({ editor, className, style }: { editor: SynTextEditor
     return editor.attach(surface.current);
   }, [editor]);
 
-  // Leaving full screen with Escape.
+  // Leaving full screen with Escape (a dialog open on top closes first).
   useEffect(() => {
     if (!ui.fullscreen) return;
-    const key = (e: KeyboardEvent) => { if (e.key === "Escape" && !ui.modal) editor.toggleFullscreen(false); };
-    document.addEventListener("keydown", key);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", key); document.body.style.overflow = overflow; };
-  }, [editor, ui.fullscreen, ui.modal]);
+    return () => { document.body.style.overflow = overflow; };
+  }, [ui.fullscreen]);
+  useEscape(!!ui.fullscreen && !ui.modal, () => editor.toggleFullscreen(false));
+  // The find bar closes on Escape pressed in the editor — before a host dialog around it takes the key.
+  useEscape(!!ui.find, () => editor.toggleFind(false), () => [rootRef.current]);
 
   const statusbar = c.statusbar ?? PRESETS[c.preset ?? "full"].statusbar;
-  const rootRef = useRef<HTMLDivElement>(null);
-  const layer = { className: cx(editor.themeClass, c.classNames?.layer), style: { ...editor.varStyle, ...c.styles?.layer }, anchor: rootRef };
+  const layer = { className: cx(editor.themeClass, c.classNames?.layer), style: { ...editor.varStyle, ...c.styles?.layer }, anchor: rootRef, portal: c.portal };
   const modal = ui.modal;
 
   return (
@@ -102,6 +104,7 @@ export function EditorView({ editor, className, style }: { editor: SynTextEditor
                 }}
               />
               <FloatBar editor={editor} surface={surfaceEl} scroller={scroller} />
+              <CodeBar editor={editor} surface={surfaceEl} scroller={scroller} />
             </div>
             {statusbar && <StatusBar editor={editor} className={c.classNames?.statusbar} style={c.styles?.statusbar} />}
             {modal?.kind === "gallery" && <MediaGallery editor={editor} filter={modal.filter} replace={modal.replace} thumbnailFor={modal.thumbnailFor} onClose={() => editor.closeModal()} />}

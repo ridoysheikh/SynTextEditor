@@ -6,7 +6,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronRight } from "lucide-react";
 import type { ContextMenuContext, ContextMenuItem, SynTextEditor } from "../SynTextEditor";
-import { Layer, cx, fitAxis, keep, revealRow, overridable } from "./primitives";
+import { Layer, cx, fitAxis, keep, layerFrame, revealRow, overridable } from "./primitives";
 import { useUI } from "./toolbar/tools";
 
 type Row = Exclude<ContextMenuItem, "separator">;
@@ -71,13 +71,14 @@ function Menu({ editor, ctx, items }: { editor: SynTextEditor; ctx: ContextMenuC
       if (e.type === "scroll" && e.target instanceof Element && e.target.closest(".se-ctx")) return;   // the menu's own scroll
       close();
     };
-    document.addEventListener("keydown", key, true);
+    // On window, ahead of a host dialog's own keys (Escape would close the dialog instead of the menu).
+    window.addEventListener("keydown", key, true);
     document.addEventListener("mousedown", down, true);
     window.addEventListener("resize", away);
     window.addEventListener("blur", away);
     window.addEventListener("scroll", away, true);
     return () => {
-      document.removeEventListener("keydown", key, true);
+      window.removeEventListener("keydown", key, true);
       document.removeEventListener("mousedown", down, true);
       window.removeEventListener("resize", away);
       window.removeEventListener("blur", away);
@@ -143,17 +144,22 @@ function Panel({ level, x, y, anchor, children }: { level: number; x: number; y:
     if (!el) return;
     const w = el.offsetWidth;
     const h = el.scrollHeight;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    // Worked out in the room the layer has (the screen, or a host dialog that clips), then moved to its origin.
+    const f = layerFrame(el);
+    const vw = f.width;
+    const vh = f.height;
+    const px = x - f.left;
+    const py = y - f.top;
     if (!anchor) {
-      const left = x + w > vw - 4 ? Math.max(4, x - w) : x;
-      const v = fitAxis(y, y, h, vh, 0, 4);
-      setPos({ left, top: v.at, room: v.max });
+      const left = px + w > vw - 4 ? Math.max(4, px - w) : px;
+      const v = fitAxis(py, py, h, vh, 0, 4);
+      setPos({ left: left + f.left - f.x, top: v.at + f.top - f.y, room: v.max });
     } else {
-      const r = anchor.getBoundingClientRect();
+      const a = anchor.getBoundingClientRect();
+      const r = { left: a.left - f.left, right: a.right - f.left, top: a.top - f.top };
       const left = r.right + w - 2 > vw - 4 ? Math.max(4, r.left - w + 2) : r.right - 2;
       const room = vh - 8;
-      setPos({ left, top: Math.max(4, Math.min(r.top - 4, vh - Math.min(h, room) - 4)), room });
+      setPos({ left: left + f.left - f.x, top: Math.max(4, Math.min(r.top - 4, vh - Math.min(h, room) - 4)) + f.top - f.y, room });
     }
   }, [x, y, anchor]);
   return (

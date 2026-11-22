@@ -15,7 +15,7 @@ Every block has a `type` and `spans` (empty for blocks that aren't text).
 | `p` | paragraph — and every list item | `align?`, `list?`, `indent?`, `checked?` |
 | `h1` `h2` `h3` `h4` | headings | `align?` |
 | `quote` | quotation | `align?` |
-| `code` | code block (line breaks are `\n` in the text) | |
+| `code` | code block (line breaks are `\n` in the text) | `lang?`, `title?`, `lineNumbers?: false`, `lineWrap?: true` — see [code blocks](code-blocks.md) |
 | `hr` | horizontal rule | |
 | `image` | image | `src`, `alt?`, `caption?`, `link?`, `asset?`, plus the [sizing and layout fields](#image-and-video-size-and-layout) |
 | `video` | video | `src`, `poster?` (thumbnail, an image address), `caption?`, `asset?`, plus the [sizing and layout fields](#image-and-video-size-and-layout) |

@@ -8,6 +8,7 @@
  * with no code of their own.
  */
 import { clipboardHtml, parseHtml } from "../core/html";
+import { cleanLang, nextIndent, type CodeOptions } from "../core/code";
 import {
   BLOCK_SIZE, blockLength, blockText, clampPx, clampSize, cleanBlock, docLength, docToPlain, docWords, emptyBlock, emptyDoc, isAtom,
   isEmptyDoc, marksOf, normaliseMedia, normaliseSpans, plainToBlocks, safeLink, MEDIA_MIN,
@@ -36,6 +37,8 @@ export interface EditorState {
   atom: number | null;
   /** the table cell the caret is in */
   cell: CellRef | null;
+  /** the code block the caret is in, by block index */
+  code: number | null;
   focused: boolean;
   /** the document has no text */
   empty: boolean;
@@ -51,6 +54,8 @@ export interface EngineOptions {
   history?: number;
   /** A pasted image or video address, alone on an empty line, becomes the media itself. */
   embedUrls?: () => boolean;
+  /** How code blocks are drawn (highlighting). */
+  code?: CodeOptions;
 }
 type Kind = "type" | "space" | "delete" | "size" | "other";
 interface CellSel { ref: CellRef; sel: Sel }
@@ -180,6 +185,7 @@ export class RichEngine {
       link: lr ? ops.marksAt(doc, { b: lr[0].b, o: lr[0].o + 1 }).link ?? null : ops.activeIn(doc, from, to, null).marks.link ?? null,
       length: docLength(this.doc), words: docWords(this.doc),
       atom: this.cell ? null : this.atomIndex(), cell: this.cell?.ref ?? null, focused: this.focused, empty: isEmptyDoc(this.doc),
+      code: !this.cell && this.doc.blocks[this.sel.focus.b]?.type === "code" ? this.sel.focus.b : null,
     };
   }
   private notify() { this.state = this.compute(); this.markAtom(); this.listeners.forEach((f) => f()); }
@@ -247,7 +253,7 @@ export class RichEngine {
         const old = was?.type === "table" ? this.cache.get(was) : undefined;
         if (old && !used.has(old)) { patchTable(old, b); el = old; this.cache.set(b, el); }
       }
-      if (!el) { el = buildBlock(b); this.cache.set(b, el); }
+      if (!el) { el = buildBlock(b, this.opts.code); this.cache.set(b, el); }
       used.add(el);
       frame(el, b, markers[i]);
       return el;
@@ -269,6 +275,23 @@ export class RichEngine {
   private markAtom() {
     const at = this.cell ? null : this.atomIndex();
     Array.from(this.root.children).forEach((el, i) => (el as HTMLElement).toggleAttribute("data-selected", i === at));
+    this.markLine();
+  }
+
+  /** The code line the caret is on carries `data-active` (the editor highlights it, like an IDE). */
+  private markLine() {
+    const was = this.root.querySelector(".se-ln[data-active]");
+    let line: Element | null = null;
+    const p = this.sel.focus;
+    if (this.focused && !this.cell && this.doc.blocks[p.b]?.type === "code" && !cmp(this.sel.anchor, p)) {
+      const at = domFromPos(this.root, p);
+      const n = at?.[0];
+      const el = n ? (n.nodeType === Node.ELEMENT_NODE ? n as Element : n.parentElement) : null;
+      line = el?.closest(".se-ln") ?? (el && at ? (el.childNodes[at[1]] as Element | undefined)?.closest?.(".se-ln") ?? null : null);
+    }
+    if (was === line) return;
+    was?.removeAttribute("data-active");
+    line?.setAttribute("data-active", "");
   }
 
   hasFocus() { return !!document.activeElement && this.root.contains(document.activeElement); }
@@ -492,14 +515,22 @@ export class RichEngine {
     if (blk.type === "code") {
       // Enter in code is a new line; on an empty last line it leaves the block.
       const text = modelText(blk);
-      if (cut.pos.o === text.length && text.endsWith("\n")) {
-        const trimmed = ops.deleteRange(cut.doc, { b: cut.pos.b, o: text.length - 1 }, cut.pos);
+      // An empty last line (indentation counts as empty) after another line: leave the block.
+      const blank = /\n[ \t]*$/.exec(text);
+      if (cut.pos.o === text.length && blank) {
+        const trimmed = ops.deleteRange(cut.doc, { b: cut.pos.b, o: blank.index }, cut.pos);
         const r = ops.splitBlock(trimmed.doc, trimmed.pos);
         this.put(r.doc, caret(r.pos), "other");
         return;
       }
-      const r = ops.insertText(cut.doc, cut.pos, "\n", this.stored ?? ops.marksAt(cut.doc, cut.pos));
-      this.put(r.doc, caret(r.pos), "type");
+      // A new line keeps the indentation (one step more after an opening bracket); between a pair of brackets the
+      // closing one moves to a line of its own.
+      const lineBefore = text.slice(text.lastIndexOf("\n", cut.pos.o - 1) + 1, cut.pos.o);
+      const base = /^[ \t]*/.exec(lineBefore)![0];
+      const ind = nextIndent(lineBefore);
+      const pair = ind !== base && /^[)\]}]/.test(text.slice(cut.pos.o));
+      const r = ops.insertText(cut.doc, cut.pos, `\n${ind}${pair ? `\n${base}` : ""}`, this.stored ?? ops.marksAt(cut.doc, cut.pos));
+      this.put(r.doc, caret({ b: cut.pos.b, o: cut.pos.o + 1 + ind.length }), "type");
       return;
     }
     const r = ops.splitBlock(cut.doc, cut.pos);
@@ -617,6 +648,48 @@ export class RichEngine {
   }
   insertRule() { this.insertAtom({ type: "hr", spans: [] }); }
   insertTable(rows: number, cols: number, head = true) { this.insertAtom(tables.newTable(rows, cols, head)); }
+
+  // ── code ─────────────────────────────────────────────────────────────────
+  /** Change the code block the caret is in (or the one at `b`): language, title, line numbers, wrapping. */
+  setCode(patch: Pick<Block, "lang" | "title" | "lineNumbers" | "lineWrap">, b: number | null = this.state.code) {
+    if (b === null || this.doc.blocks[b]?.type !== "code") return;
+    const clean: Partial<Block> = {};
+    if ("lang" in patch) clean.lang = cleanLang(patch.lang);
+    if ("title" in patch) clean.title = patch.title?.trim().slice(0, 80) || undefined;
+    if ("lineNumbers" in patch) clean.lineNumbers = patch.lineNumbers === false ? false : undefined;
+    if ("lineWrap" in patch) clean.lineWrap = patch.lineWrap ? true : undefined;
+    this.commit(ops.updateBlock(this.doc, b, clean), this.sel, "other");
+  }
+
+  /**
+   * Tab in code: with a caret, two spaces; over several lines (or with Shift), every line the selection touches
+   * moves a step right or left — the selection keeps covering the same text.
+   */
+  private indentCode(dir: 1 | -1) {
+    const [from, to] = ordered(this.sel);
+    if (dir > 0 && !cmp(from, to)) { this.typeText("  "); return; }
+    if (from.b !== to.b) { if (dir > 0) this.typeText("  "); return; }
+    const b = from.b;
+    const text = modelText(this.doc.blocks[b]);
+    const starts = [text.lastIndexOf("\n", from.o - 1) + 1];
+    for (let i = text.indexOf("\n", from.o); i >= 0 && i < to.o; i = text.indexOf("\n", i + 1)) {
+      if (i + 1 < to.o || !cmp(from, to)) starts.push(i + 1);
+    }
+    const unit = "  ";
+    const removed = starts.map((s) => (dir > 0 ? 0 : text[s] === "\t" ? 1 : /^ {0,2}/.exec(text.slice(s, s + 2))![0].length));
+    let doc = this.doc;
+    for (let i = starts.length - 1; i >= 0; i--) {
+      const at = { b, o: starts[i] };
+      if (dir > 0) doc = ops.insertText(doc, at, unit, ops.marksAt(doc, { b, o: starts[i] + 1 })).doc;
+      else if (removed[i]) doc = ops.deleteRange(doc, at, { b, o: starts[i] + removed[i] }).doc;
+    }
+    if (doc === this.doc) return;
+    const shift = (o: number) => starts.reduce((acc, s, i) => {
+      if (dir > 0) return acc + (s <= o ? unit.length : 0);
+      return acc - (s <= o ? Math.min(removed[i], o - s) : 0);
+    }, o);
+    this.put(doc, { anchor: { b, o: shift(this.sel.anchor.o) }, focus: { b, o: shift(this.sel.focus.o) } }, "other");
+  }
 
   /** Change the selected atom (or the one at `b`). */
   updateAtom(patch: Partial<Block>, b: number | null = this.atomIndex()) {
@@ -1033,7 +1106,7 @@ export class RichEngine {
     if (e.key === "Tab" && !mod && !e.altKey && !this.cell) {
       const [from, to] = ordered(this.sel);
       if (this.doc.blocks.slice(from.b, to.b + 1).some((b) => b.list) && s.has("indent")) return act(() => this.indent(e.shiftKey ? -1 : 1));
-      if (this.doc.blocks[from.b]?.type === "code") return act(() => this.typeText("  "));
+      if (this.doc.blocks[from.b]?.type === "code") return act(() => this.indentCode(e.shiftKey ? -1 : 1));
       return;                                  // elsewhere Tab moves focus on, as everywhere else
     }
     if (!mod) return;

@@ -10,11 +10,12 @@ import { blockText, isAtom, spansText, type Block, type Cell, type Marks, type S
 import type { Pos } from "../core/ops";
 import { blockClass, blockData, formatBytes, mediaLayout, spanClass, spanStyle } from "../core/styles";
 import type { CellRef } from "../core/table";
+import { blockLanguage, codeLines, type CodeOptions } from "../core/code";
 
 const FILE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/></svg>';
 
 /** A block's element — its frame (class, marker, data) is set by `frame`. */
-export function buildBlock(b: Block): HTMLElement {
+export function buildBlock(b: Block, code?: CodeOptions): HTMLElement {
   const el = document.createElement("div");
   el.dataset.type = b.type;
   if (isAtom(b)) {
@@ -22,8 +23,36 @@ export function buildBlock(b: Block): HTMLElement {
     buildAtom(el, b);
     return el;
   }
+  if (b.type === "code") { fillCode(el, b, code); return el; }
   fillSpans(el, b.spans);
   return el;
+}
+
+/**
+ * A code block: a body of lines (`.se-ln`), each run a span carrying its formats (`data-m`) and its token class.
+ * The header and the line numbers are drawn by CSS (`::before`), so the only text in the element is the code —
+ * every offset still counts exactly the model's characters. A line's "\n" ends that line's element; an empty last
+ * line stands on a `<br data-tail>`.
+ */
+function fillCode(el: HTMLElement, b: Block, code?: CodeOptions) {
+  const body = document.createElement("span");
+  body.className = "se-code-body";
+  for (const line of codeLines(b.spans, blockLanguage(b), code)) {
+    const ln = document.createElement("span");
+    ln.className = "se-ln";
+    for (const pc of line) {
+      const s = buildSpan({ ...pc.marks, text: pc.text });
+      if (pc.tk) s.classList.add(`se-tk-${pc.tk}`);
+      ln.append(s);
+    }
+    if (!line.length) {
+      const br = document.createElement("br");
+      br.dataset.tail = "";
+      ln.append(br);
+    }
+    body.append(ln);
+  }
+  el.append(body);
 }
 
 /** Spans as elements carrying their formats in `data-m`; an empty run or a trailing line break gets a `<br>` to stand on. */
@@ -182,7 +211,7 @@ export function frame(el: HTMLElement, b: Block, marker: string | null) {
   const cls = blockClass(b);
   if (el.className !== cls) el.className = cls;
   const data = blockData(b);
-  for (const k of ["align", "indent", "checked", "wrap", "free"]) {
+  for (const k of ["align", "indent", "checked", "wrap", "free", "lang", "title", "label", "nolines", "linewrap"]) {
     if (data[k] === undefined) delete el.dataset[k];
     else if (el.dataset[k] !== data[k]) el.dataset[k] = data[k];
   }
@@ -250,11 +279,17 @@ export function pointIn(el: HTMLElement, o: number): [Node, number] {
   let at = 0;
   let last: Text | null = null;
   for (let t = walker.nextNode() as Text | null; t; t = walker.nextNode() as Text | null) {
-    if (o <= at + t.length) return [t, o - at];
+    // Just after a line break is the start of the next line, not the end of this one.
+    if (o < at + t.length || (o === at + t.length && !t.data.endsWith("\n"))) return [t, o - at];
     at += t.length;
     last = t;
   }
-  return last ? [last, last.length] : [el, 0];
+  // Past the last line break: the empty line drawn after it (its placeholder), when there is one.
+  const tail = last?.data.endsWith("\n") ? el.querySelector("br[data-tail]") : null;
+  if (tail?.parentNode) return [tail.parentNode, Array.prototype.indexOf.call(tail.parentNode.childNodes, tail)];
+  if (last) return [last, last.length];
+  const line = el.querySelector(".se-ln");                 // an empty code block: inside its one line
+  return line ? [line, 0] : [el, 0];
 }
 
 /** What an element holds now as spans — after the browser edited it itself. */

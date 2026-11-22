@@ -5,6 +5,10 @@ export { SynTextView } from "./view/SynTextView";
 export type { SynTextViewProps } from "./view/SynTextView";
 
 export { toHTML, parseHtml, clipboardHtml } from "./core/html";
+export { CODE_LANGUAGES, codeLanguage, detectLanguage, tokenize, codeLines, codeLabel, blockLanguage } from "./core/code";
+export type { CodeLanguage, CodeOptions, CodeLine, CodePiece, Token, TokenKind } from "./core/code";
+export { mountCode, codeTextOf } from "./view/code-mount";
+export { copyText } from "./view/copy";
 export type { HtmlOptions } from "./core/html";
 
 export {

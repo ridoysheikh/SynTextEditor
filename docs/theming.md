@@ -291,6 +291,21 @@ Defined in `layout.css`. `compact` is the default; `comfortable` applies with `d
 | `--se-ctx-max-h` | `min(560px, 100vh - 8px)` | tallest the right-click menu gets |
 | `--se-ctx-max-w` | `280px` | widest the right-click menu gets |
 
+### Code blocks
+
+| Variable | Light | Dark | |
+|---|---|---|---|
+| `--se-pre-bg` | `#f6f8fa` | `#1a1c22` | the pane |
+| `--se-code-head` | `#f0f2f5` | `#1e2128` | the header strip |
+| `--se-code-gutter` | `#8c95a3` | `#6b7280` | line numbers |
+| `--se-code-line` | `#eef2fb` | `#22262f` | the caret's line (editor) |
+| `--se-tk-c` `-s` `-n` `-k` `-t` `-l` `-f` `-p` `-g` `-m` `-v` `-o` `-r` `-h` | GitHub-light hues | GitHub-dark hues | comment, string, number, keyword, type, literal, function, property, tag, meta, variable, operator, regex, heading |
+| `--se-tk-a` / `--se-tk-a-bg` · `--se-tk-d` / `--se-tk-d-bg` | | | added and removed lines in a diff |
+| `--se-code-head-h` · `--se-code-gutter-w` · `--se-code-x` | `30px` · `3.4em` · `14px` | | header height, gutter width, code inset |
+
+Without `theme.css` (your own palette), leave the `--se-tk-*` out and code is one colour, or set them to your
+tokens. See [code blocks](code-blocks.md).
+
 ### Media
 
 `--se-wrap-gap` (default `1em`) is the space between text and an image or video it wraps around.

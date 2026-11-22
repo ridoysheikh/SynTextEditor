@@ -6,6 +6,7 @@ import {
   BLOCK_SIZE, blockLength, blockText, clampSize, emptyBlock, isAtom, MAX_INDENT, marksOf, normaliseSpans, spansLength,
   type Align, type Block, type ListKind, type MarkKey, type Marks, type RichDoc, type Span, type TextType, type Toggle,
 } from "./model";
+import { codeLanguage } from "./code";
 
 export interface Pos { b: number; o: number }
 export interface Sel { anchor: Pos; focus: Pos }
@@ -112,7 +113,10 @@ export function splitBlock(d: RichDoc, p: Pos): Result {
   const [l, r] = splitSpans(blk.spans, p.o);
   const next: Block = { ...blk, spans: r };
   delete next.checked;
-  if (blk.type !== "p" && blk.type !== "quote" && r.length === 0) next.type = "p";
+  if (blk.type !== "p" && blk.type !== "quote" && r.length === 0) {
+    next.type = "p";
+    for (const k of Object.keys(CODE_FIELDS) as (keyof typeof CODE_FIELDS)[]) delete next[k];
+  }
   blocks.splice(p.b, 1, { ...blk, spans: l }, next);
   return { doc: withBlocks(d, blocks), pos: { b: p.b + 1, o: 0 } };
 }
@@ -298,8 +302,14 @@ export function mapBlocks(d: RichDoc, from: Pos, to: Pos, fn: (b: Block) => Bloc
   for (let i = from.b; i <= to.b; i++) if (!isAtom(blocks[i])) blocks[i] = fn(blocks[i]);
   return withBlocks(d, blocks);
 }
+/** The fields only a code block has (language, title, line options) — dropped when a block stops being code. */
+export const CODE_FIELDS = { lang: undefined, title: undefined, lineNumbers: undefined, lineWrap: undefined } as const;
 export const setBlockType = (d: RichDoc, from: Pos, to: Pos, type: TextType) =>
-  mapBlocks(d, from, to, (b) => ({ ...b, type, ...(type !== "p" ? { list: undefined, indent: undefined, checked: undefined } : {}) }));
+  mapBlocks(d, from, to, (b) => ({
+    ...b, type,
+    ...(type !== "p" ? { list: undefined, indent: undefined, checked: undefined } : {}),
+    ...(type !== "code" ? CODE_FIELDS : {}),
+  }));
 export const setAlign = (d: RichDoc, from: Pos, to: Pos, align: Align) =>
   mapBlocks(d, from, to, (b) => ({ ...b, align: align === "left" ? undefined : align }));
 export function toggleList(d: RichDoc, from: Pos, to: Pos, kind: ListKind): RichDoc {
@@ -397,7 +407,10 @@ export function autoFormat(d: RichDoc, p: Pos, allowed: (f: Partial<Block>) => b
   const b = d.blocks[p.b];
   if (b.type !== "p" || b.list) return null;
   const before = blockText(b).slice(0, p.o);
-  const hit = AUTO_FORMATS[before];
+  // ```ts (or any language a fence names) opens a code block in that language.
+  const fence = /^```([\w+#.-]{1,20})$/.exec(before);
+  const lang = fence ? codeLanguage(fence[1]) : null;
+  const hit = AUTO_FORMATS[before] ?? (lang ? { type: "code" as const, ...(lang.id !== "plain" ? { lang: lang.id } : {}) } : undefined);
   if (!hit || !allowed(hit)) return null;
   const blocks = d.blocks.slice();
   blocks[p.b] = { ...b, ...hit, spans: sliceSpans(b.spans, p.o, blockLength(b)) };

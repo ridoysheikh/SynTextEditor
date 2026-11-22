@@ -220,6 +220,22 @@
 }
 .se-float .se-sep { width: 1px; height: 16px; margin: 0 2px; background: var(--se-border); }
 
+/* ── The code bar, over a code block's header ── */
+.se-codebar { padding: 1px; box-shadow: none; border-color: var(--se-border); --se-btn: 22px; }
+.se-codebar .se-btn { height: var(--se-btn); min-width: var(--se-btn); }
+.se-codebar .se-btn[data-wide] { padding: 0 6px; gap: 4px; }
+.se-code-lang { font-family: var(--se-font); font-size: var(--se-fs-sm, 11.5px); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.se-popover.se-code-langs { width: 210px; padding-top: 0; }
+.se-code-search {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 6px;
+  margin: 0 calc(var(--se-menu-pad) * -1) var(--se-menu-pad); padding: var(--se-menu-pad) 8px;
+  background: var(--se-popover); border-bottom: 1px solid var(--se-border); color: var(--se-text-2);
+}
+.se-code-search svg { width: var(--se-icon-sm); height: var(--se-icon-sm); flex-shrink: 0; }
+.se-code-search .se-input { flex: 1; min-width: 0; height: var(--se-control-h-sm); border: 0; background: transparent; padding: 0; box-shadow: none; }
+.se-code-title { display: flex; gap: 6px; padding: 4px; min-width: 240px; }
+.se-code-title .se-input { flex: 1; min-width: 0; }
+
 /* ══ The document ═════════════════════════════════════════════════════════
    Shared by the editor and the viewer. Default sizes match BLOCK_SIZE in
    core/model.ts (px), so a size picked in the editor means the same here. */
@@ -242,10 +258,81 @@
 .se-content .se-blk + .se-h3, .se-content .se-blk + .se-h4 { margin-top: calc(var(--se-heading-gap) * 0.8); }
 .se-content .se-quote { padding-left: var(--se-quote-pad); border-left: 3px solid var(--se-quote-bar); color: var(--se-quote-text); }
 .se-content .se-code {
+  --se-code-head-h: 30px;                 /* the header strip (the code bar centres itself on it) */
+  --se-code-gutter-w: 3.4em;              /* line numbers */
+  --se-code-x: 14px;                      /* code from the gutter and the right edge */
+  position: relative;
   font-family: var(--se-font-mono); font-size: var(--se-code-size, 13px); line-height: 1.55;
-  padding: var(--se-code-pad); background: var(--se-pre-bg); border: 1px solid var(--se-border); border-radius: var(--se-radius-sm);
+  padding: var(--se-code-pad); background: var(--se-pre-bg); color: var(--se-code-fg, var(--se-text));
+  border: 1px solid var(--se-border); border-radius: var(--se-radius-sm);
   tab-size: 2; overflow-x: auto; white-space: pre-wrap;
 }
+/* The code block as an editor pane: a header (file name or language), numbered lines, colours. Blocks written
+   before 1.0 have no `data-label` and keep the plain look above. */
+.se-content .se-code[data-label] { padding: 0; overflow: hidden; white-space: pre; line-height: 1.6; }
+.se-content .se-code[data-label]::before {
+  content: attr(data-label);
+  display: flex; align-items: center; height: var(--se-code-head-h); padding: 0 44px 0 var(--se-code-x);
+  font-family: var(--se-font); font-size: var(--se-fs-sm, 11.5px); font-weight: var(--se-fw-semibold, 600); letter-spacing: .01em;
+  color: var(--se-text-2); background: var(--se-code-head, var(--se-surface)); border-bottom: 1px solid var(--se-border);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  user-select: none; -webkit-user-select: none; pointer-events: none;
+}
+.se-content .se-code[data-label] > .se-code-body {
+  display: block; padding: 8px 0; overflow-x: auto; overscroll-behavior-x: contain;
+  font: inherit; color: inherit; background: none; border: 0; border-radius: 0; counter-reset: se-ln;
+}
+.se-content .se-code[data-label] .se-ln {
+  display: block; width: max-content; min-width: 100%; min-height: 1.6em; min-height: 1lh; padding-right: var(--se-code-x);
+}
+/* The number is drawn, not text: it can't be selected, copied or reached by the caret. */
+.se-content .se-code[data-label] .se-ln::before {
+  counter-increment: se-ln; content: counter(se-ln);
+  position: sticky; left: 0; z-index: 1; display: inline-block; box-sizing: border-box;
+  width: var(--se-code-gutter-w); padding-right: 1.1em; margin-right: calc(var(--se-code-x) - 1.1em + 0.4em);
+  text-align: right; color: var(--se-code-gutter, var(--se-muted)); background: var(--se-pre-bg);
+  user-select: none; -webkit-user-select: none; pointer-events: none;
+}
+.se-content .se-code[data-label][data-nolines] .se-ln { padding-left: var(--se-code-x); }
+.se-content .se-code[data-label][data-nolines] .se-ln::before { content: none; display: none; }
+.se-content .se-code[data-label][data-linewrap] { white-space: pre-wrap; }
+.se-content .se-code[data-label][data-linewrap] .se-ln { position: relative; width: auto; padding-left: calc(var(--se-code-gutter-w) + 0.4em); overflow-wrap: anywhere; }
+.se-content .se-code[data-label][data-linewrap] .se-ln::before { position: absolute; left: 0; top: 0; margin: 0; }
+.se-content .se-code[data-label][data-linewrap][data-nolines] .se-ln { padding-left: var(--se-code-x); }
+/* The editor marks the caret's line. */
+.se-surface .se-code[data-label] .se-ln[data-active],
+.se-surface .se-code[data-label] .se-ln[data-active]::before { background: var(--se-code-line, color-mix(in srgb, var(--se-accent) 7%, var(--se-pre-bg))); }
+.se-surface .se-code[data-label] .se-ln[data-active]::before { color: var(--se-text-2); }
+
+/* Syntax colours (theme.css sets them; without it the code stays one colour). */
+.se-content .se-tk-c { color: var(--se-tk-c, inherit); font-style: italic; }
+.se-content .se-tk-s { color: var(--se-tk-s, inherit); }
+.se-content .se-tk-n { color: var(--se-tk-n, inherit); }
+.se-content .se-tk-k { color: var(--se-tk-k, inherit); }
+.se-content .se-tk-t { color: var(--se-tk-t, inherit); }
+.se-content .se-tk-l { color: var(--se-tk-l, inherit); }
+.se-content .se-tk-f { color: var(--se-tk-f, inherit); }
+.se-content .se-tk-p { color: var(--se-tk-p, inherit); }
+.se-content .se-tk-g { color: var(--se-tk-g, inherit); }
+.se-content .se-tk-m { color: var(--se-tk-m, inherit); }
+.se-content .se-tk-v { color: var(--se-tk-v, inherit); }
+.se-content .se-tk-o { color: var(--se-tk-o, inherit); }
+.se-content .se-tk-r { color: var(--se-tk-r, inherit); }
+.se-content .se-tk-h { color: var(--se-tk-h, inherit); font-weight: var(--se-fw-semibold, 600); }
+.se-content .se-tk-a { color: var(--se-tk-a, inherit); background: var(--se-tk-a-bg, transparent); }
+.se-content .se-tk-d { color: var(--se-tk-d, inherit); background: var(--se-tk-d-bg, transparent); }
+
+/* Copy, in the viewer and in HTML (`mountCode`) — the editor has its code bar instead. */
+.se-content .se-code-copy {
+  position: absolute; top: calc((var(--se-code-head-h) - 24px) / 2); right: 6px; z-index: 2;
+  display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0;
+  font-size: 14px; color: var(--se-text-2); background: transparent; border: 0; border-radius: var(--se-radius-sm); cursor: pointer;
+  transition: background var(--se-transition), color var(--se-transition);
+}
+.se-content .se-code:not([data-label]) .se-code-copy { top: 6px; }
+.se-content .se-code-copy:hover { color: var(--se-text); background: var(--se-surface-2); }
+.se-content .se-code-copy:focus-visible { outline: 2px solid var(--se-ring); outline-offset: 1px; }
+.se-content .se-code-copy[data-done] { color: var(--se-success); }
 .se-content [data-align="center"] { text-align: center; }
 .se-content [data-align="right"] { text-align: right; }
 .se-content [data-align="justify"] { text-align: justify; }
@@ -395,7 +482,14 @@
 
 /* ══ Layer: menus, popovers and dialogs (portalled) ═══════════════════════ */
 
-.se-layer { font-family: var(--se-font); font-size: var(--se-ui-size); line-height: 1.45; color: var(--se-text); }
+/* Out of the flow wherever it's portalled (in <body>, or inside a host's dialog), and clickable even when the host
+   switched pointer events off around its modal (`body { pointer-events: none }`). No stacking context of its own. */
+.se-layer {
+  position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: visible; pointer-events: auto;
+  font-family: var(--se-font); font-size: var(--se-ui-size); line-height: 1.45; color: var(--se-text);
+}
+/* Measures where `position: fixed` starts for this layer (the viewport, or a transformed dialog it sits in). */
+.se-layer-probe { position: fixed; left: 0; top: 0; width: 0; height: 0; visibility: hidden; pointer-events: none; }
 .se-popover {
   position: fixed; z-index: 1100;
   min-width: 140px; max-width: var(--se-popover-max-w);

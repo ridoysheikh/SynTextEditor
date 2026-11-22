@@ -15,6 +15,7 @@ import {
   type Block, type BlockType, type Cell, type Marks, type Schema, type Span,
 } from "./model";
 import { blockClass, blockData, cssText, formatBytes, listMarkers, mediaLayout, spanClass, spanStyle } from "./styles";
+import { blockLanguage, cleanLang, codeLines, type CodeOptions } from "./code";
 
 // ── out ──────────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,8 @@ export interface HtmlOptions {
   mode?: "class" | "inline";
   /** Wrap in `<div class="se-content">` (class mode) — default true. */
   wrap?: boolean;
+  /** Code blocks: `{ highlight: false }` writes them without token colours. */
+  code?: CodeOptions;
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -43,6 +46,26 @@ function spanHtml(s: Span, inline: boolean): string {
   return attrs ? `<span${attrs}>${inner}</span>` : inner;
 }
 const spansHtml = (spans: Span[], inline: boolean) => spans.map((s) => spanHtml(s, inline)).join("");
+
+/**
+ * A code block in class mode: `<pre><code>` with one `.se-ln` per line, tokens as `se-tk-*` classes. Line breaks are
+ * real newlines inside each line (not `<br>`), so any reader of the HTML still gets the code's text.
+ */
+function codeHtml(b: Block, opts: CodeOptions | undefined): string {
+  const lines = codeLines(b.spans, blockLanguage(b), opts).map((line) => {
+    const inner = line.map((pc) => {
+      const cls = [spanClass(pc.marks), pc.tk && `se-tk-${pc.tk}`].filter(Boolean).join(" ");
+      const css = cssText(spanStyle(pc.marks));
+      let text = esc(pc.text);
+      if (pc.marks.script) text = `<${pc.marks.script}>${text}</${pc.marks.script}>`;
+      const attrs = `${cls ? ` class="${cls}"` : ""}${css ? ` style="${esc(css)}"` : ""}`;
+      if (pc.marks.link) return `<a href="${esc(pc.marks.link)}" target="_blank" rel="noopener noreferrer"${attrs}>${text}</a>`;
+      return attrs ? `<span${attrs}>${text}</span>` : text;
+    }).join("");
+    return `<span class="se-ln">${inner}</span>`;
+  }).join("");
+  return `<pre class="${blockClass(b)}"${dataAttrs(b)}><code class="se-code-body">${lines}</code></pre>`;
+}
 
 function dataAttrs(b: Block): string {
   return Object.entries(blockData(b)).map(([k, v]) => ` data-${k}="${esc(v)}"`).join("");
@@ -133,6 +156,7 @@ export function blocksToHtml(blocks: Block[], opts: HtmlOptions = {}): string {
       open = tag;
     }
     if (isAtom(b)) { html += atomHtml(b, inline); return; }
+    if (b.type === "code" && !inline && !tag) { html += codeHtml(b, opts.code); return; }
     const inner = spansHtml(b.spans, inline) || "<br>";
     if (tag) {
       const box = b.list === "check" ? (inline ? `${b.checked ? "☑" : "☐"} ` : "") : "";
@@ -225,7 +249,25 @@ export function pxOf(value: string, around: number): number | undefined {
   return Number.isFinite(px) && px > 0 ? clampSize(px) : undefined;
 }
 
-interface Ctx { marks: Marks; size: number; list: Block["list"]; depth: number; type: BlockType; align?: Block["align"]; pre: boolean; checked?: boolean }
+interface Ctx {
+  marks: Marks; size: number; list: Block["list"]; depth: number; type: BlockType; align?: Block["align"]; pre: boolean; checked?: boolean;
+  /** inside a `<pre>`: the code block's own fields (language, title, line options) */
+  code?: Partial<Block>;
+}
+
+/** A `<pre>`'s language, title and line options: this editor's data attributes, or a `language-*` class. */
+function codeFields(el: HTMLElement): Partial<Block> {
+  const f: Partial<Block> = {};
+  const inner = el.querySelector(":scope > code") as HTMLElement | null;
+  const cls = `${el.className} ${inner?.className ?? ""}`;
+  const lang = cleanLang(el.getAttribute("data-lang") ?? inner?.getAttribute("data-lang") ?? /\b(?:language|lang)-([\w+#.-]+)/.exec(cls)?.[1]);
+  if (lang) f.lang = lang;
+  const title = el.getAttribute("data-title");
+  if (title) f.title = title;
+  if (el.hasAttribute("data-nolines")) f.lineNumbers = false;
+  if (el.hasAttribute("data-linewrap")) f.lineWrap = true;
+  return f;
+}
 
 /** Pasted HTML → blocks, kept to what `schema` allows. */
 export function parseHtml(html: string, schema: Schema = FULL_SCHEMA): Block[] {
@@ -246,7 +288,7 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
   let cur: Block | null = null;
   const start = (ctx: Ctx) => {
     cur = {
-      type: ctx.type, spans: [], ...(ctx.align ? { align: ctx.align } : {}),
+      type: ctx.type, spans: [], ...(ctx.align ? { align: ctx.align } : {}), ...(ctx.type === "code" ? ctx.code : {}),
       ...(ctx.list && ctx.type === "p" ? { list: ctx.list, ...(ctx.depth ? { indent: ctx.depth } : {}), ...(ctx.checked ? { checked: true as const } : {}) } : {}),
     };
     out.push(cur);
@@ -408,11 +450,21 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
       if (ph) next.marks.highlight = ph[1].toLowerCase();
     }
 
-    const isBlock = BLOCKS.has(tag) || tag === "UL" || tag === "OL" || st?.display === "block";
+    // Inside a code block, a block element is a line (editors and sites draw each line as a `<div>`); this editor's
+    // own lines (`.se-ln`) carry their newline themselves.
+    const asBlock = BLOCKS.has(tag) || tag === "UL" || tag === "OL" || st?.display === "block";
+    if (ctx.pre && (asBlock || el.classList.contains("se-ln"))) {
+      const blk = cur as Block | null;
+      const last = blk?.spans[blk.spans.length - 1];
+      if (!el.classList.contains("se-ln") && last && !last.text.endsWith("\n")) blk!.spans.push({ ...ctx.marks, text: "\n" });
+      el.childNodes.forEach((c) => walk(c, next));
+      return;
+    }
+    const isBlock = asBlock;
     if (isBlock) {
       if (HEADING[tag]) { next.type = HEADING[tag]; next.size = BLOCK_SIZE[next.type]; next.list = undefined; }
       if (tag === "BLOCKQUOTE") next.type = "quote";
-      if (tag === "PRE") { next.pre = true; next.type = "code"; delete next.marks.code; next.size = BLOCK_SIZE.code; }
+      if (tag === "PRE") { next.pre = true; next.type = "code"; delete next.marks.code; next.size = BLOCK_SIZE.code; next.code = codeFields(el); }
       if (tag === "UL" || tag === "OL") {
         next.depth = ctx.list ? ctx.depth + 1 : 0;
         const check = el.getAttribute("data-type") === "check" || el.classList.contains("contains-task-list");
@@ -437,6 +489,7 @@ export function parseNodes(root: Node, base: Partial<Ctx> = {}): Block[] {
       const blank = cur as Block | null;
       if (blank && !blank.spans.length && tag !== "LI" && !blank.list === !next.list) {   // <li><p>…</p></li>: one block, not two
         if (next.type !== "p") blank.type = next.type;
+        if (next.type === "code") Object.assign(blank, next.code);
         if (next.align) blank.align = next.align;
       } else if (tag === "LI" || BLOCKS.has(tag)) { end(); start(next); }
     }
